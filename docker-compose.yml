@@ -1,0 +1,21 @@
+# Optional: a real Postgres server for production-like local development.
+# Not required — the app defaults to embedded PGlite when DATABASE_URL is unset.
+#
+#   docker compose up -d
+#   echo 'DATABASE_URL=postgres://runplan:runplan@localhost:5432/runplan' >> .env
+#   pnpm setup   # generate + apply migrations against the server
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: runplan
+      POSTGRES_PASSWORD: runplan
+      POSTGRES_DB: runplan
+    ports:
+      - "5432:5432"
+    volumes:
+      - runplan_pgdata:/var/lib/postgresql/data
+
+volumes:
+  runplan_pgdata:
