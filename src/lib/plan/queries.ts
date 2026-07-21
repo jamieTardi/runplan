@@ -10,6 +10,7 @@ export async function getUserPlans(userId: string) {
       id: plans.id,
       name: plans.name,
       raceType: plans.raceType,
+      customDistanceKm: plans.customDistanceKm,
       goalTimeS: plans.goalTimeS,
       raceDate: plans.raceDate,
       status: plans.status,

@@ -1,4 +1,5 @@
 import type { Phase, RaceType, WorkoutType } from "@/db/schema";
+import { formatDistance } from "@/lib/units";
 
 export const PHASE_META: Record<Phase, { label: string; short: string; color: string }> = {
   endurance: { label: "Endurance", short: "Base", color: "#3b82f6" },
@@ -30,7 +31,23 @@ export const RACE_TYPE_LABEL: Record<RaceType, string> = {
   "10k": "10K",
   half: "Half marathon",
   marathon: "Marathon",
+  "50k": "50K",
+  "100k": "100K",
+  "100mi": "100 miles",
+  custom: "Custom",
 };
+
+/** Display label for a race, showing the actual distance for custom races. */
+export function raceLabel(
+  raceType: RaceType,
+  customDistanceKm?: number | null,
+  unit: "km" | "mi" = "km",
+): string {
+  if (raceType === "custom" && customDistanceKm) {
+    return formatDistance(customDistanceKm, unit);
+  }
+  return RACE_TYPE_LABEL[raceType];
+}
 
 /** A translucent background derived from a hex colour, for badges/cards. */
 export function softBg(color: string, pct = 14): string {

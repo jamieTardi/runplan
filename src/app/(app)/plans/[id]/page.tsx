@@ -16,6 +16,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     id: plan.id,
     name: plan.name,
     raceType: plan.raceType,
+    customDistanceKm: plan.customDistanceKm,
     goalTimeS: plan.goalTimeS,
     raceDate: plan.raceDate,
     startVolumeKm: plan.startVolumeKm,

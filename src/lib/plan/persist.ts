@@ -20,6 +20,7 @@ export async function saveGeneratedPlan(
         userId,
         name: gen.name,
         raceType: gen.raceType,
+        customDistanceKm: input.customDistanceKm ?? null,
         goalTimeS: gen.goalTimeS,
         raceDate: gen.raceDateISO,
         methodology: "pfitzinger",
@@ -114,6 +115,7 @@ export async function regeneratePlan(
       .set({
         raceDate: input.raceDateISO,
         raceType: input.raceType,
+        customDistanceKm: input.customDistanceKm ?? null,
         goalTimeS: input.goalTimeS,
         startVolumeKm: input.startVolumeKm,
         peakVolumeKm: input.peakVolumeKm,

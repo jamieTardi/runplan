@@ -7,12 +7,26 @@
 
 import type { RaceType } from "@/db/schema";
 
-export const RACE_DISTANCES_M: Record<RaceType, number> = {
+export const RACE_DISTANCES_M: Record<Exclude<RaceType, "custom">, number> = {
   "5k": 5000,
   "10k": 10000,
   half: 21097.5,
   marathon: 42195,
+  "50k": 50000,
+  "100k": 100000,
+  "100mi": 160934,
 };
+
+/** Race distance in metres, resolving "custom" from its stored km value. */
+export function raceDistanceM(raceType: RaceType, customDistanceKm?: number | null): number {
+  if (raceType === "custom") {
+    if (!customDistanceKm || customDistanceKm <= 0) {
+      throw new Error("A custom race needs a distance");
+    }
+    return customDistanceKm * 1000;
+  }
+  return RACE_DISTANCES_M[raceType];
+}
 
 /** Oxygen cost (ml/kg/min) of running at velocity v (metres per minute). */
 export function vo2FromVelocity(v: number): number {
@@ -40,11 +54,26 @@ export function raceToVdot(distanceM: number, timeS: number): number {
   return vo2FromVelocity(v) / pctVo2Max(tMin);
 }
 
+/** Riegel fatigue exponent used to bridge ultra performances to the marathon. */
+const RIEGEL_EXPONENT = 1.06;
+
+/**
+ * VDOT for a performance over any distance. Daniels' %VO2max curve is only
+ * calibrated up to ~marathon duration, so ultra performances are first converted
+ * to an equivalent marathon time via Riegel's endurance model (t2 = t1·(d2/d1)^1.06)
+ * and scored from there.
+ */
+export function performanceVdot(distanceM: number, timeS: number): number {
+  if (distanceM <= RACE_DISTANCES_M.marathon) return raceToVdot(distanceM, timeS);
+  const marathonEquivS = timeS * Math.pow(RACE_DISTANCES_M.marathon / distanceM, RIEGEL_EXPONENT);
+  return raceToVdot(RACE_DISTANCES_M.marathon, marathonEquivS);
+}
+
 /** Predicted race time (seconds) for a given VDOT over a distance. Solved numerically. */
 export function vdotToRaceTime(vdot: number, distanceM: number): number {
   // raceToVdot is monotonically decreasing in time; bisect on time.
   let lo = 60; // 1 min (absurdly fast) — upper VDOT bound
-  let hi = 60 * 60 * 10; // 10 h — lower VDOT bound
+  let hi = 60 * 60 * 48; // 48 h — lower VDOT bound (covers 100-mile finish times)
   for (let i = 0; i < 100; i++) {
     const mid = (lo + hi) / 2;
     const v = raceToVdot(distanceM, mid);

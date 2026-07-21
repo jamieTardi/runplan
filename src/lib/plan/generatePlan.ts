@@ -8,20 +8,15 @@ import {
 } from "./goal";
 import { buildWeekPlans } from "./periodize";
 import type { GeneratedPlan, GenerateInput, PlanWeek } from "./types";
-import { paceZones } from "./vdot";
-
-const RACE_LABEL: Record<string, string> = {
-  "5k": "5K",
-  "10k": "10K",
-  half: "Half Marathon",
-  marathon: "Marathon",
-};
+import { paceZones, raceDistanceM } from "./vdot";
+import { raceLabel } from "@/lib/planMeta";
 
 /** Generate a complete, periodised training plan from user inputs. Pure & deterministic. */
 export function generatePlan(input: GenerateInput): GeneratedPlan {
-  const goalVdot = computeGoalVdot(input.raceType, input.goalTimeS);
+  const raceDistanceKm = raceDistanceM(input.raceType, input.customDistanceKm) / 1000;
+  const goalVdot = computeGoalVdot(input.raceType, input.goalTimeS, input.customDistanceKm);
   const currentVdot = computeCurrentVdot(input.currentFitness);
-  const goalPace = computeGoalPace(input.raceType, input.goalTimeS);
+  const goalPace = computeGoalPace(input.raceType, input.goalTimeS, input.customDistanceKm);
 
   const weekPlans = buildWeekPlans(
     input.todayISO,
@@ -57,6 +52,7 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       week: wp,
       totalWeeks,
       raceType: input.raceType,
+      raceDistanceKm,
       goalTimeS: input.goalTimeS,
       raceDateISO: input.raceDateISO,
       daysPerWeek: input.daysPerWeek,
@@ -77,7 +73,11 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
   );
 
   return {
-    name: input.name?.trim() || `Sub-${RACE_LABEL[input.raceType]} plan`,
+    name:
+      input.name?.trim() ||
+      (input.raceType === "custom"
+        ? `${raceLabel(input.raceType, input.customDistanceKm)} race plan`
+        : `Sub-${raceLabel(input.raceType)} plan`),
     raceType: input.raceType,
     goalTimeS: input.goalTimeS,
     raceDateISO: input.raceDateISO,
@@ -95,5 +95,3 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
     },
   };
 }
-
-export { RACE_LABEL };

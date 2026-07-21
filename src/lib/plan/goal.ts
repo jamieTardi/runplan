@@ -1,21 +1,29 @@
 import type { RaceType } from "@/db/schema";
-import { RACE_DISTANCES_M, raceToVdot, velocityFromVo2 } from "./vdot";
+import { performanceVdot, raceDistanceM } from "./vdot";
 import type { CurrentFitness } from "./types";
 
 /** VDOT implied by a goal time for a race. */
-export function goalVdot(raceType: RaceType, goalTimeS: number): number {
-  return raceToVdot(RACE_DISTANCES_M[raceType], goalTimeS);
+export function goalVdot(
+  raceType: RaceType,
+  goalTimeS: number,
+  customDistanceKm?: number | null,
+): number {
+  return performanceVdot(raceDistanceM(raceType, customDistanceKm), goalTimeS);
 }
 
 /** Goal race pace (sec/km) — definitional: time ÷ distance. */
-export function goalPaceSecPerKm(raceType: RaceType, goalTimeS: number): number {
-  return goalTimeS / (RACE_DISTANCES_M[raceType] / 1000);
+export function goalPaceSecPerKm(
+  raceType: RaceType,
+  goalTimeS: number,
+  customDistanceKm?: number | null,
+): number {
+  return goalTimeS / (raceDistanceM(raceType, customDistanceKm) / 1000);
 }
 
 /** Estimate current VDOT from either a recent race or a self-reported easy pace. */
 export function currentVdot(fitness: CurrentFitness): number {
   if (fitness.mode === "race") {
-    return raceToVdot(RACE_DISTANCES_M[fitness.raceType], fitness.timeS);
+    return performanceVdot(raceDistanceM(fitness.raceType), fitness.timeS);
   }
   // Estimate: assume habitual easy pace sits at ~64% of VO2max.
   const v = 60000 / fitness.easyPaceSecPerKm; // m/min

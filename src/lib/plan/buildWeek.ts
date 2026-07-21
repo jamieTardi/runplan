@@ -1,16 +1,43 @@
 import type { RaceType } from "@/db/schema";
 import { addDaysISO, isoDayOfWeek } from "./dates";
 import type { PaceZones } from "./vdot";
-import { RACE_DISTANCES_M } from "./vdot";
+import { raceLabel } from "@/lib/planMeta";
 import type { PlanWeek, PlanWorkout, WorkoutSegment } from "./types";
 import type { WeekPlan } from "./periodize";
 
-const LONG_CAP_KM: Record<RaceType, number> = { "5k": 16, "10k": 22, half: 26, marathon: 37 };
+// Long-run cap grows with race distance; piecewise-linear between anchors.
+// Even for 100 miles the longest single run tops out around 48 km — ultra
+// training leans on back-to-back long runs, not ever-longer single sessions.
+const LONG_CAP_ANCHORS: [raceKm: number, capKm: number][] = [
+  [5, 16],
+  [10, 22],
+  [21.0975, 26],
+  [42.195, 37],
+  [100, 45],
+  [160.934, 48],
+];
+
+export function longCapKm(raceDistanceKm: number): number {
+  const a = LONG_CAP_ANCHORS;
+  if (raceDistanceKm <= a[0][0]) return a[0][1];
+  for (let i = 1; i < a.length; i++) {
+    if (raceDistanceKm <= a[i][0]) {
+      const t = (raceDistanceKm - a[i - 1][0]) / (a[i][0] - a[i - 1][0]);
+      return Math.round((a[i - 1][1] + (a[i][1] - a[i - 1][1]) * t) * 10) / 10;
+    }
+  }
+  return a[a.length - 1][1];
+}
+
+/** Race distance beyond which the plan trains ultra-style (B2B long runs, no MP work). */
+const ULTRA_THRESHOLD_KM = 43;
 
 export interface BuildWeekInput {
   week: WeekPlan;
   totalWeeks: number;
   raceType: RaceType;
+  /** Resolved race distance in km (handles custom distances). */
+  raceDistanceKm: number;
   goalTimeS: number;
   raceDateISO: string;
   daysPerWeek: number;
@@ -93,8 +120,9 @@ function clamp(n: number, lo: number, hi: number) {
 }
 
 export function buildWeek(input: BuildWeekInput): PlanWeek {
-  const { week, raceType, daysPerWeek, longRunDow, easy, quality, goalPaceSecPerKm } = input;
+  const { week, raceDistanceKm, daysPerWeek, longRunDow, easy, quality } = input;
   const planned = week.plannedVolumeKm;
+  const isUltra = raceDistanceKm >= ULTRA_THRESHOLD_KM;
 
   if (input.isRaceWeek) return buildRaceWeek(input);
 
@@ -111,9 +139,11 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   // 3. Fixed sessions (distance-defining).
   const longFrac =
     week.phase === "endurance" ? 0.28 : week.phase === "race_prep" ? 0.32 : 0.3;
-  const longKm = Math.min(round1(planned * longFrac), LONG_CAP_KM[raceType]);
+  const longKm = Math.min(round1(planned * longFrac), longCapKm(raceDistanceKm));
   const mlKm = Math.min(round1(planned * 0.18), round1(longKm * 0.85), 23);
   const qaKm = clamp(round1(planned * 0.13), 5, 18);
+  // Ultra plans stack a second long run the day before the long run (back-to-back).
+  const b2bKm = isUltra ? round1(Math.min(longKm * 0.6, planned * 0.2)) : 0;
 
   const workouts: Record<number, Omit<PlanWorkout, "dow" | "dateISO">> = {};
 
@@ -142,7 +172,15 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
       case "recovery":
         flexDays.push({ dow, weight: 0.7, role });
         break;
-      default: // easy1 / easy2
+      case "easy1":
+        // Ultras: the day before the long run is a second long run (back-to-back).
+        if (isUltra && b2bKm > 0) {
+          workouts[dow] = backToBack(easy, b2bKm);
+        } else {
+          flexDays.push({ dow, weight: 1, role });
+        }
+        break;
+      default: // easy2
         flexDays.push({ dow, weight: 1, role });
     }
   }
@@ -201,6 +239,17 @@ function recovery(z: PaceZones, km: number) {
   };
 }
 
+function backToBack(z: PaceZones, km: number) {
+  return {
+    type: "medium_long" as const,
+    distanceKm: km,
+    paceLowSPerKm: Math.round(z.easyFast),
+    paceHighSPerKm: Math.round(z.easySlow),
+    segments: null,
+    description: "Back-to-back long run (run on tired legs)",
+  };
+}
+
 function mediumLong(z: PaceZones, km: number) {
   return {
     type: "medium_long" as const,
@@ -256,7 +305,7 @@ function qualityA(input: BuildWeekInput, km: number) {
 
   if (input.isTuneupWeek) {
     // A tune-up race replaces the week's hard session.
-    const dist = input.raceType === "marathon" ? 15 : 10;
+    const dist = input.raceDistanceKm >= 42 ? 15 : 10;
     return {
       type: "race" as const,
       distanceKm: dist,
@@ -330,22 +379,21 @@ function tempo(
 // ---------------------------------------------------------------------------
 
 function buildRaceWeek(input: BuildWeekInput): PlanWeek {
-  const { week, raceType, goalTimeS, goalPaceSecPerKm, raceDateISO, easy } = input;
+  const { week, raceType, raceDistanceKm, goalTimeS, goalPaceSecPerKm, raceDateISO, easy } = input;
   const raceDow = isoDayOfWeek(raceDateISO);
-  const raceDistKm = RACE_DISTANCES_M[raceType] / 1000;
   const workouts: Record<number, Omit<PlanWorkout, "dow" | "dateISO">> = {};
 
   for (let dow = 1; dow <= 7; dow++) {
     if (dow === raceDow) {
       workouts[dow] = {
         type: "race",
-        distanceKm: round1(raceDistKm),
+        distanceKm: round1(raceDistanceKm),
         paceLowSPerKm: Math.round(goalPaceSecPerKm),
         paceHighSPerKm: Math.round(goalPaceSecPerKm),
         segments: [
           {
             kind: "steady",
-            label: `Goal race — ${raceType.toUpperCase()} at goal pace`,
+            label: `Goal race — ${raceLabel(raceType, raceDistanceKm)} at goal pace`,
           },
         ],
         description: `🏁 RACE DAY — goal ${formatGoal(goalTimeS)}`,

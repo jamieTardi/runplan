@@ -31,6 +31,7 @@ export interface PlanVM {
   id: string;
   name: string;
   raceType: RaceType;
+  customDistanceKm: number | null;
   goalTimeS: number;
   raceDate: string;
   startVolumeKm: number;

@@ -4,12 +4,14 @@ import type { Feasibility } from "./goal";
 
 /** Current fitness: either a recent race result or a self-estimate. */
 export type CurrentFitness =
-  | { mode: "race"; raceType: RaceType; timeS: number }
+  | { mode: "race"; raceType: Exclude<RaceType, "custom">; timeS: number }
   | { mode: "estimate"; weeklyKm: number; easyPaceSecPerKm: number };
 
 export interface GenerateInput {
   name?: string;
   raceType: RaceType;
+  /** Distance in km — required when raceType is "custom", ignored otherwise. */
+  customDistanceKm?: number | null;
   goalTimeS: number;
   raceDateISO: string;
   /** Reference "start" date (defaults to today). Plan begins the Monday of this week. */

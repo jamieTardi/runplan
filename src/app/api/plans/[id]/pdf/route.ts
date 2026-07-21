@@ -4,7 +4,7 @@ import { getPlanDetail } from "@/lib/plan/queries";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
 import { isoDayOfWeek } from "@/lib/plan/dates";
-import { PHASE_META, RACE_TYPE_LABEL, WORKOUT_META } from "@/lib/planMeta";
+import { PHASE_META, raceLabel, WORKOUT_META } from "@/lib/planMeta";
 import type { WorkoutSegment } from "@/lib/plan/types";
 import {
   distanceIn,
@@ -32,7 +32,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!plan) return new Response("Not found", { status: 404 });
 
   const unit: Unit = auth.user.unitPref;
-  const goalPace = goalPaceSecPerKm(plan.raceType, plan.goalTimeS);
+  const goalPace = goalPaceSecPerKm(plan.raceType, plan.goalTimeS, plan.customDistanceKm);
   const easyZ = paceZones(plan.currentVdot);
   const goalZ = paceZones(plan.goalVdot);
 
@@ -54,7 +54,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .fontSize(11)
     .fillColor("#e0e7ff")
     .text(
-      `${RACE_TYPE_LABEL[plan.raceType]}  ·  Goal ${formatDuration(plan.goalTimeS)}  ·  ${formatPace(goalPace, unit)}  ·  Race ${fmtDate(plan.raceDate)}`,
+      `${raceLabel(plan.raceType, plan.customDistanceKm, unit)}  ·  Goal ${formatDuration(plan.goalTimeS)}  ·  ${formatPace(goalPace, unit)}  ·  Race ${fmtDate(plan.raceDate)}`,
       left,
       54,
     );
@@ -67,7 +67,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   y += 18;
   const paces: [string, string][] = [
     ["Easy", formatPaceRange(easyZ.easyFast, easyZ.easySlow, unit)],
-    ["Marathon", formatPace(goalPace, unit)],
+    ["Race pace", formatPace(goalPace, unit)],
     ["Threshold", formatPace(goalZ.threshold, unit)],
     ["Interval", formatPace(goalZ.interval, unit)],
     ["Recovery", formatPace(easyZ.recovery, unit)],

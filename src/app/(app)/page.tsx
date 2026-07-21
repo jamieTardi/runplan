@@ -5,7 +5,7 @@ import { getPlanDetail, getUserPlans } from "@/lib/plan/queries";
 import { addDaysISO, diffDaysISO, isoDayOfWeek, todayISO } from "@/lib/plan/dates";
 import { creditedKm } from "@/lib/plan/viewModel";
 import type { WorkoutSegment } from "@/lib/plan/types";
-import { PHASE_META, RACE_TYPE_LABEL, softBg } from "@/lib/planMeta";
+import { PHASE_META, raceLabel, softBg } from "@/lib/planMeta";
 import { distanceIn, formatDuration } from "@/lib/units";
 import { VolumeChart } from "@/components/plan/VolumeChart";
 import { ThisWeek } from "@/components/plan/ThisWeek";
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
                 <ArrowRight size={18} style={{ color: "var(--faint)" }} />
               </Link>
               <p className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>
-                {RACE_TYPE_LABEL[detail.raceType]} · goal {formatDuration(detail.goalTimeS)}
+                {raceLabel(detail.raceType, detail.customDistanceKm, unit)} · goal {formatDuration(detail.goalTimeS)}
               </p>
 
               <div className="grid grid-cols-3 gap-3 mt-4">
@@ -149,7 +149,7 @@ export default async function DashboardPage() {
                   )}
                 </div>
                 <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
-                  {RACE_TYPE_LABEL[p.raceType]} · {formatDuration(p.goalTimeS)}
+                  {raceLabel(p.raceType, p.customDistanceKm, unit)} · {formatDuration(p.goalTimeS)}
                 </p>
                 <p className="text-xs mt-2" style={{ color: "var(--faint)" }}>
                   {d >= 0 ? `${d} days to race` : "race passed"} · {p.raceDate}

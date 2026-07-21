@@ -6,7 +6,7 @@ import { CalendarClock, ChevronDown, Download, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
-import { PHASE_META, RACE_TYPE_LABEL, softBg } from "@/lib/planMeta";
+import { PHASE_META, raceLabel, softBg } from "@/lib/planMeta";
 import { creditedKm, type PlanVM, type WeekVM } from "@/lib/plan/viewModel";
 import { distanceIn, formatDuration, formatPace, formatPaceRange, type Unit } from "@/lib/units";
 import { EditWorkoutDialog, type WorkoutPatch } from "./EditWorkoutDialog";
@@ -107,7 +107,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
 
   const easyZ = paceZones(initial.currentVdot);
   const goalZ = paceZones(initial.goalVdot);
-  const goalPace = goalPaceSecPerKm(initial.raceType, initial.goalTimeS);
+  const goalPace = goalPaceSecPerKm(initial.raceType, initial.goalTimeS, initial.customDistanceKm);
   const daysToRace = diffDaysISO(initial.raceDate, today);
 
   return (
@@ -125,7 +125,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
               )}
             </div>
             <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-              {RACE_TYPE_LABEL[initial.raceType]} · goal{" "}
+              {raceLabel(initial.raceType, initial.customDistanceKm, unit)} · goal{" "}
               <span className="font-bold" style={{ color: "var(--foreground)" }}>{formatDuration(initial.goalTimeS)}</span>{" "}
               · {formatPace(goalPace, unit)}
             </p>
@@ -154,7 +154,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         {/* pace legend */}
         <div className="flex flex-wrap gap-2 mt-4">
           <Pace label="Easy" value={formatPaceRange(easyZ.easyFast, easyZ.easySlow, unit)} />
-          <Pace label="Marathon" value={formatPace(goalPace, unit)} />
+          <Pace label="Race pace" value={formatPace(goalPace, unit)} />
           <Pace label="Threshold" value={formatPace(goalZ.threshold, unit)} />
           <Pace label="Interval" value={formatPace(goalZ.interval, unit)} />
           <Pace label="Recovery" value={formatPace(easyZ.recovery, unit)} />

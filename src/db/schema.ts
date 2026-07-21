@@ -43,7 +43,7 @@ export const sessions = pgTable(
 // Training plans
 // ---------------------------------------------------------------------------
 
-export const raceTypes = ["5k", "10k", "half", "marathon"] as const;
+export const raceTypes = ["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"] as const;
 export type RaceType = (typeof raceTypes)[number];
 
 export const phases = ["endurance", "lt", "race_prep", "taper"] as const;
@@ -74,6 +74,8 @@ export const plans = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     raceType: text("race_type", { enum: raceTypes }).notNull(),
+    // Distance in km when raceType is "custom"; null for standard distances.
+    customDistanceKm: real("custom_distance_km"),
     goalTimeS: integer("goal_time_s").notNull(),
     raceDate: date("race_date").notNull(),
     methodology: text("methodology").notNull().default("pfitzinger"),

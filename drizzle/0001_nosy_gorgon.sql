@@ -1,0 +1,1 @@
+ALTER TABLE "plans" ADD COLUMN "custom_distance_km" real;

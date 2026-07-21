@@ -16,13 +16,19 @@ import {
 } from "@/lib/units";
 import { VolumeChart } from "./VolumeChart";
 
-const RACE_TYPES: RaceType[] = ["5k", "10k", "half", "marathon"];
+const RACE_TYPES: RaceType[] = ["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"];
+// Fixed-length distances usable as a recent-race fitness marker.
+const RECENT_RACE_TYPES = RACE_TYPES.filter((r) => r !== "custom") as Exclude<RaceType, "custom">[];
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const GOAL_PLACEHOLDER: Record<RaceType, string> = {
   "5k": "18:30",
   "10k": "38:00",
   half: "1:25:00",
   marathon: "2:59:00",
+  "50k": "4:30:00",
+  "100k": "10:00:00",
+  "100mi": "24:00:00",
+  custom: "5:00:00",
 };
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -56,10 +62,11 @@ export function PlanBuilder({
 
   const [name, setName] = useState("");
   const [raceType, setRaceType] = useState<RaceType>("marathon");
+  const [customDist, setCustomDist] = useState("");
   const [goalTime, setGoalTime] = useState("2:59:00");
   const [raceDate, setRaceDate] = useState(defaultRaceDateISO);
   const [fitnessMode, setFitnessMode] = useState<"race" | "estimate">("race");
-  const [recentRaceType, setRecentRaceType] = useState<RaceType>("half");
+  const [recentRaceType, setRecentRaceType] = useState<Exclude<RaceType, "custom">>("half");
   const [recentTime, setRecentTime] = useState("1:25:00");
   const [easyPace, setEasyPace] = useState(unit === "mi" ? "8:00" : "5:00");
   const [currentVol, setCurrentVol] = useState(unit === "mi" ? "45" : "70");
@@ -84,6 +91,15 @@ export function PlanBuilder({
         return { input: null, plan: null, buildError: "Choose a race date" };
       }
 
+      let customDistanceKm: number | null = null;
+      if (raceType === "custom") {
+        const parsed = toKm(parseFloat(customDist), unit);
+        if (!parsed || parsed <= 0) {
+          return { input: null, plan: null, buildError: "Enter your race distance" };
+        }
+        customDistanceKm = Math.round(parsed * 10) / 10;
+      }
+
       let currentFitness: GenerateInput["currentFitness"];
       if (fitnessMode === "race") {
         const timeS = parseDuration(recentTime);
@@ -99,6 +115,7 @@ export function PlanBuilder({
       const built: GenerateInput = {
         name: name.trim() || undefined,
         raceType,
+        customDistanceKm,
         goalTimeS,
         raceDateISO: raceDate,
         todayISO,
@@ -115,7 +132,7 @@ export function PlanBuilder({
       return { input: null, plan: null, buildError: (e as Error).message };
     }
   }, [
-    name, raceType, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
+    name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
     easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, unit, todayISO,
   ]);
 
@@ -151,16 +168,28 @@ export function PlanBuilder({
           <Field label="Plan name (optional)">
             <input className="input" value={name} placeholder="e.g. Autumn marathon build" onChange={(e) => setName(e.target.value)} />
           </Field>
+          <Field label="Race distance">
+            <div className="grid grid-cols-4 gap-1.5">
+              {RACE_TYPES.map((r) => (
+                <Chip key={r} active={raceType === r} onClick={() => setRaceType(r)}>
+                  {RACE_TYPE_LABEL[r].replace(" marathon", "").replace(" miles", " mi")}
+                </Chip>
+              ))}
+            </div>
+          </Field>
           <div className="grid sm:grid-cols-2 gap-3">
-            <Field label="Race distance">
-              <div className="grid grid-cols-4 gap-1.5">
-                {RACE_TYPES.map((r) => (
-                  <Chip key={r} active={raceType === r} onClick={() => setRaceType(r)}>
-                    {RACE_TYPE_LABEL[r].replace(" marathon", "").replace("Half", "Half")}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
+            {raceType === "custom" && (
+              <Field label={`Race distance (${distLabel})`}>
+                <input
+                  type="number"
+                  className="input"
+                  value={customDist}
+                  min={1}
+                  placeholder={unit === "mi" ? "e.g. 50" : "e.g. 80"}
+                  onChange={(e) => setCustomDist(e.target.value)}
+                />
+              </Field>
+            )}
             <Field label="Goal finish time (h:mm:ss)">
               <input className="input" value={goalTime} placeholder={GOAL_PLACEHOLDER[raceType]} onChange={(e) => setGoalTime(e.target.value)} inputMode="numeric" />
             </Field>
@@ -182,8 +211,8 @@ export function PlanBuilder({
           {fitnessMode === "race" ? (
             <div className="grid sm:grid-cols-2 gap-3">
               <Field label="Distance">
-                <select className="input" value={recentRaceType} onChange={(e) => setRecentRaceType(e.target.value as RaceType)}>
-                  {RACE_TYPES.map((r) => (
+                <select className="input" value={recentRaceType} onChange={(e) => setRecentRaceType(e.target.value as Exclude<RaceType, "custom">)}>
+                  {RECENT_RACE_TYPES.map((r) => (
                     <option key={r} value={r}>{RACE_TYPE_LABEL[r]}</option>
                   ))}
                 </select>
