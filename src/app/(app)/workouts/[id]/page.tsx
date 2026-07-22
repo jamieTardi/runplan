@@ -7,9 +7,16 @@ import { plans, workouts } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { WORKOUT_META } from "@/lib/planMeta";
 import { formatDistance, formatDuration, formatPace, formatPaceRange } from "@/lib/units";
-import { fmtDayDate } from "@/components/plan/DayCard";
+import { isoDayOfWeek } from "@/lib/plan/dates";
 import { GarminPanel } from "@/components/workout/GarminPanel";
 import type { WorkoutSegment } from "@/lib/plan/types";
+
+const DAYNAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDayDate(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${DAYNAMES[isoDayOfWeek(iso) - 1]} ${d} ${MONTHS[m - 1]}`;
+}
 
 export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
