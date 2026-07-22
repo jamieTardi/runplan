@@ -23,7 +23,7 @@ function rpID(): string {
   return process.env.RP_ID ?? new URL(appUrl()).hostname;
 }
 
-export async function registrationOptions(user: User) {
+export async function registrationOptions(user: User, plain = false) {
   const existing = await db.select().from(passkeys).where(eq(passkeys.userId, user.id));
   const options = await generateRegistrationOptions({
     rpName: RP_NAME,
@@ -35,12 +35,13 @@ export async function registrationOptions(user: User) {
       id: p.id,
       transports: p.transports ? (p.transports.split(",") as never) : undefined,
     })),
-    authenticatorSelection: {
-      residentKey: "required", // discoverable → shows up in usernameless sign-in
-      userVerification: "required", // insist on biometric/PIN, not just presence
-    },
-    // "This device's fingerprint/face", not the QR / security-key picker.
-    preferredAuthenticatorType: "localDevice",
+    // Strict = straight to this device's biometric prompt. Some Android /
+    // Google Password Manager combos throw UnknownError on the strict set,
+    // so the client can retry once with `plain` relaxed options.
+    authenticatorSelection: plain
+      ? { residentKey: "preferred", userVerification: "preferred" }
+      : { residentKey: "required", userVerification: "required" },
+    ...(plain ? {} : { preferredAuthenticatorType: "localDevice" as const }),
   });
   putChallenge(`webauthn:reg:${user.id}`, options.challenge);
   return options;

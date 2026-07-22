@@ -26,6 +26,17 @@ export function PasskeysCard() {
     load();
   }, [load]);
 
+  async function ceremony(plain: boolean) {
+    const optRes = await fetch("/api/auth/passkey/register-options", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plain }),
+    });
+    const options = await optRes.json();
+    if (!optRes.ok) throw new Error(options.error ?? "Couldn't start registration");
+    return withCeremonyTimeout(() => startRegistration({ optionsJSON: options }));
+  }
+
   async function add() {
     setMsg(null);
     if (!browserSupportsWebAuthn()) {
@@ -34,28 +45,40 @@ export function PasskeysCard() {
     }
     setBusy(true);
     try {
-      const optRes = await fetch("/api/auth/passkey/register-options", { method: "POST" });
-      const options = await optRes.json();
-      if (!optRes.ok) throw new Error(options.error ?? "Couldn't start registration");
+      let response;
+      try {
+        response = await ceremony(false);
+      } catch (err) {
+        // Some Android/credential-manager combos choke on the strict options
+        // with a bare UnknownError — retry once with relaxed options.
+        const name = err instanceof Error ? err.name : "";
+        const msg = err instanceof Error ? err.message : "";
+        if (/unknown|notreadable/i.test(`${name} ${msg}`)) {
+          response = await ceremony(true);
+        } else {
+          throw err;
+        }
+      }
 
-      const response = await withCeremonyTimeout(() => startRegistration({ optionsJSON: options }));
-
-      const name =
+      const deviceName =
         /android/i.test(navigator.userAgent) ? "Android device"
         : /iphone|ipad/i.test(navigator.userAgent) ? "iPhone/iPad"
         : "This device";
       const res = await fetch("/api/auth/passkey", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response, name }),
+        body: JSON.stringify({ response, name: deviceName }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
       setMsg({ ok: true, text: "Passkey added — you can now sign in with it" });
       await load();
     } catch (err) {
+      const name = err instanceof Error ? err.name : "";
       const m = err instanceof Error ? err.message : "Registration failed";
-      if (!/timed out|not allowed|abort/i.test(m)) setMsg({ ok: false, text: m });
+      if (!/timed out|not allowed|abort/i.test(m)) {
+        setMsg({ ok: false, text: name && name !== "Error" ? `${m} (${name})` : m });
+      }
     }
     setBusy(false);
   }
