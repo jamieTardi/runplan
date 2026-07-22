@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Check, Flag, Mountain, Pencil, Trash2, Upload, X } from "lucide-react";
 import { distanceIn, formatDistance, formatDuration, type Unit } from "@/lib/units";
-import { LineChart } from "@/components/workout/LineChart";
+import { LineChart, type ChartPoint } from "@/components/workout/LineChart";
 
 const RouteMap = dynamic(() => import("@/components/workout/RouteMap").then((m) => m.RouteMap), {
   ssr: false,
@@ -19,6 +19,15 @@ export interface RaceCourseVM {
   elevLossM: number | null;
   route: [number, number][];
   elevSeries: { dM: number; elevM: number }[];
+}
+
+function haversineM(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLon = toRad(bLon - aLon);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
 }
 
 function daysUntil(raceDateISO: string): number {
@@ -61,6 +70,38 @@ export function RaceCard({
   const [error, setError] = useState<string | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [highlight, setHighlight] = useState<[number, number] | null>(null);
+
+  // Cumulative distance along the route, so elevation-hover can find the spot.
+  const routeDistances = useMemo(() => {
+    if (!course) return [];
+    const out: number[] = [0];
+    for (let i = 1; i < course.route.length; i++) {
+      const [aLat, aLon] = course.route[i - 1];
+      const [bLat, bLon] = course.route[i];
+      out.push(out[i - 1] + haversineM(aLat, aLon, bLat, bLon));
+    }
+    return out;
+  }, [course]);
+
+  function onElevHover(point: ChartPoint | null) {
+    if (!point || !course || routeDistances.length === 0) {
+      setHighlight(null);
+      return;
+    }
+    const dM = unit === "mi" ? point.x * 1609.344 : point.x * 1000;
+    // Binary search for the closest route point by cumulative distance.
+    let lo = 0;
+    let hi = routeDistances.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (routeDistances[mid] < dM) lo = mid + 1;
+      else hi = mid;
+    }
+    const idx =
+      lo > 0 && dM - routeDistances[lo - 1] < routeDistances[lo] - dM ? lo - 1 : lo;
+    setHighlight(course.route[idx]);
+  }
 
   async function saveName() {
     const name = nameDraft.trim();
@@ -200,7 +241,7 @@ export function RaceCard({
               distance is {formatDistance(raceDistanceKm, unit, 1)} — double-check you uploaded the right file.
             </p>
           )}
-          {course.route.length > 1 && <RouteMap route={course.route} />}
+          {course.route.length > 1 && <RouteMap route={course.route} highlight={highlight} />}
           {course.elevSeries.length > 1 && (
             <div>
               <h3 className="text-sm font-semibold mb-1" style={{ color: "var(--muted)" }}>
@@ -213,6 +254,7 @@ export function RaceCard({
                 height={140}
                 formatX={(x) => `${x.toFixed(1)} ${unit}`}
                 formatY={(y) => `${Math.round(y)} m`}
+                onHover={onElevHover}
               />
             </div>
           )}

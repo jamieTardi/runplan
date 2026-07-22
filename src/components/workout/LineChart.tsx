@@ -20,6 +20,7 @@ export function LineChart({
   formatX,
   formatY,
   yTicks = 3,
+  onHover,
 }: {
   points: ChartPoint[];
   color: string;
@@ -30,10 +31,19 @@ export function LineChart({
   formatX: (x: number) => string;
   formatY: (y: number) => string;
   yTicks?: number;
+  /** Fires when the hovered point changes (null when the pointer leaves). */
+  onHover?: (point: ChartPoint | null) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null); // point index
+  const lastNotified = useRef<number | null>(null);
+
+  function notify(index: number | null) {
+    if (!onHover || lastNotified.current === index) return;
+    lastNotified.current = index;
+    onHover(index == null ? null : points[index]);
+  }
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -101,6 +111,7 @@ export function LineChart({
       if (Math.abs(points[i].x - targetX) < Math.abs(points[best].x - targetX)) best = i;
     }
     setHover(best);
+    notify(best);
   }
 
   if (points.length < 2) return null;
@@ -111,9 +122,15 @@ export function LineChart({
       ref={wrapRef}
       style={{ position: "relative", width: "100%" }}
       onMouseMove={(e) => onMove(e.clientX)}
-      onMouseLeave={() => setHover(null)}
+      onMouseLeave={() => {
+        setHover(null);
+        notify(null);
+      }}
       onTouchMove={(e) => onMove(e.touches[0].clientX)}
-      onTouchEnd={() => setHover(null)}
+      onTouchEnd={() => {
+        setHover(null);
+        notify(null);
+      }}
     >
       <svg width={width || "100%"} height={height} style={{ display: "block" }} role="img">
         {ticks.map((t, i) => (
