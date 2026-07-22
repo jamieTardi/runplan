@@ -48,9 +48,22 @@ function collectRawPoints(gpx: any): any[] {
   return out;
 }
 
+/** Decode XML character references the parser leaves behind (e.g. emoji as &#x1f3c3;). */
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 function courseName(gpx: any): string | null {
   const name = gpx?.metadata?.name ?? asArray(gpx?.trk)[0]?.name ?? asArray(gpx?.rte)[0]?.name;
-  return typeof name === "string" && name.trim() ? name.trim().slice(0, 120) : null;
+  if (typeof name !== "string" || !name.trim()) return null;
+  return decodeEntities(name.trim()).slice(0, 120);
 }
 
 /* eslint-enable @typescript-eslint/no-explicit-any */

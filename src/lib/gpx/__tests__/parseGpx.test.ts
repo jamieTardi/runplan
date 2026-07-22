@@ -47,6 +47,13 @@ describe("parseGpx", () => {
     expect(c.distanceM).toBeGreaterThan(200);
   });
 
+  it("decodes character-reference emoji in course names", () => {
+    const xml = `<gpx><trk><name>Dumfries Half &#x1f3c3;&#127462;&#127481; &amp; more</name><trkseg>
+      <trkpt lat="55.0" lon="-3.6"/><trkpt lat="55.001" lon="-3.6"/>
+    </trkseg></trk></gpx>`;
+    expect(parseGpx(xml).name).toBe("Dumfries Half 🏃🇦🇹 & more");
+  });
+
   it("rejects non-GPX and empty files", () => {
     expect(() => parseGpx("not xml at all <<<")).toThrow(GpxParseError);
     expect(() => parseGpx("<html></html>")).toThrow(GpxParseError);
