@@ -35,13 +35,15 @@ export async function registrationOptions(user: User, plain = false) {
       id: p.id,
       transports: p.transports ? (p.transports.split(",") as never) : undefined,
     })),
-    // Strict = straight to this device's biometric prompt. Some Android /
-    // Google Password Manager combos throw UnknownError on the strict set,
-    // so the client can retry once with `plain` relaxed options.
+    // No authenticatorAttachment/hints here on purpose: forcing "platform"
+    // rams the ceremony into the device's DEFAULT provider (Google Password
+    // Manager) with no way to pick another — and a wedged GPM then hangs the
+    // whole flow. Without it, Android shows its normal "save passkey to…"
+    // sheet where third-party providers (e.g. Bitwarden) are selectable.
+    // `plain` further relaxes for providers that reject the strict set.
     authenticatorSelection: plain
       ? { residentKey: "preferred", userVerification: "preferred" }
       : { residentKey: "required", userVerification: "required" },
-    ...(plain ? {} : { preferredAuthenticatorType: "localDevice" as const }),
   });
   putChallenge(`webauthn:reg:${user.id}`, options.challenge);
   return options;
