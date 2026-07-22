@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.tardi.runplan",
+      "sha256_cert_fingerprints": [
+        "E3:D9:B4:6C:48:86:98:3B:6A:BB:8D:0D:9E:D6:69:57:BC:95:4E:35:14:BF:E8:46:C8:DF:71:57:3B:46:21:90"
+      ]
+    }
+  }
+]

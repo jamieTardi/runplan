@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, LogOut } from "lucide-react";
+import { Check, LogOut, Smartphone } from "lucide-react";
 import type { Unit } from "@/lib/units";
 import { ThemeToggle } from "./ThemeToggle";
 import { FontSizeControl } from "./FontSizeControl";
@@ -113,6 +113,18 @@ export function SettingsForm({
       <section className="card p-5">
         <h2 className="font-bold mb-4">Accessibility</h2>
         <FontSizeControl />
+      </section>
+
+      <section className="card p-5">
+        <h2 className="font-bold mb-1">Install the app</h2>
+        <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>
+          On Android, download the app and open the file to install it (allow installs from
+          your browser if asked). Or use your browser&apos;s &ldquo;Add to Home Screen&rdquo; /
+          &ldquo;Install app&rdquo; option on any device.
+        </p>
+        <a className="btn btn-primary self-start" href="/runplan.apk" download>
+          <Smartphone size={16} /> Download for Android (.apk)
+        </a>
       </section>
 
       <section className="card p-5">

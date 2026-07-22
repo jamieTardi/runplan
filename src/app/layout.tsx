@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { RegisterSW } from "@/components/app/RegisterSW";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -8,6 +9,15 @@ export const metadata: Metadata = {
   title: "RunPlan — goal-time training plans",
   description:
     "Generate a periodised, science-based running training plan from your goal race time.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/icons/icon-192.png",
+  },
+  appleWebApp: { capable: true, title: "RunPlan", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={inter.variable}>{children}</body>
+      <body className={inter.variable}>
+        {children}
+        <RegisterSW />
+      </body>
     </html>
   );
 }
