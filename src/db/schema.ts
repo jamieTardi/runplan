@@ -143,6 +143,23 @@ export const workouts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Garmin Connect integration
+// ---------------------------------------------------------------------------
+
+export const garminAccounts = pgTable("garmin_accounts", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // Garmin display name, for the settings UI.
+  garminUserName: text("garmin_user_name"),
+  // OAuth1 + OAuth2 tokens exported by the Garmin client. The Garmin password
+  // is never stored; tokens rotate in place when the client refreshes them.
+  tokens: jsonb("tokens").notNull(),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Relations
 // ---------------------------------------------------------------------------
 
@@ -167,8 +184,13 @@ export const workoutsRelations = relations(workouts, ({ one }) => ({
   week: one(weeks, { fields: [workouts.weekId], references: [weeks.id] }),
 }));
 
+export const garminAccountsRelations = relations(garminAccounts, ({ one }) => ({
+  user: one(users, { fields: [garminAccounts.userId], references: [users.id] }),
+}));
+
 export type User = typeof users.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
 export type Week = typeof weeks.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
+export type GarminAccount = typeof garminAccounts.$inferSelect;

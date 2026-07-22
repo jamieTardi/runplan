@@ -74,4 +74,9 @@ browser (for the live preview in the plan builder).
 - **Adjust race date** — rebuilds the plan around a new date while preserving completed
   sessions.
 - **PDF export** — a clean, printable week-by-week plan.
+- **Garmin sync** — connect your Garmin account in Settings and recent runs are matched
+  to planned sessions (by date and distance) and ticked off automatically, with actual
+  distance/time recorded. Manual "Sync now" plus an optional scheduled sync via
+  `POST /api/garmin/sync-all` guarded by `CRON_SECRET`. Uses the unofficial Garmin
+  Connect API (`@flow-js/garmin-connect`); passwords are never stored, only OAuth tokens.
 - **Switchable units** (km ⇄ mi), **light/dark theme**, fully mobile-friendly.
