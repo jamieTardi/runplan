@@ -25,6 +25,11 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash"),
   name: text("name").notNull(),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  // Billing: free | pro (Stripe subscription) | comp (complimentary, never expires).
+  plan: text("plan", { enum: ["free", "pro", "comp"] }).notNull().default("free"),
+  // For "pro": end of the paid period (+grace). Null for free/comp.
+  planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
+  stripeCustomerId: text("stripe_customer_id"),
   // Display-unit preference; canonical storage is always metric.
   unitPref: text("unit_pref", { enum: ["km", "mi"] }).notNull().default("km"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -42,6 +47,13 @@ export const sessions = pgTable(
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
+
+// Processed Stripe webhook events — dedupe on retries.
+export const billingEvents = pgTable("billing_events", {
+  id: text("id").primaryKey(), // Stripe event id
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 // External identity providers (Google today; extensible to more).
 export const oauthAccounts = pgTable(

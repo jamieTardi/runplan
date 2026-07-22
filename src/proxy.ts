@@ -10,6 +10,7 @@ const PUBLIC_PREFIXES = [
   "/reset-password",
   "/api/auth",
   "/api/garmin/sync-all",
+  "/api/billing/webhook", // Stripe-signature auth, not sessions
 ];
 
 // Next 16's request-interception convention (formerly `middleware`).

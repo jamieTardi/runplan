@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserForApi } from "@/lib/auth/api";
+import { isPro, upgradeMessage } from "@/lib/billing/plan";
 import { beginGarminLogin, GarminError } from "@/lib/garmin/client";
 import { deleteGarminAccount, getGarminAccount, upsertGarminAccount } from "@/lib/garmin/store";
 
@@ -24,6 +25,9 @@ const connectSchema = z.object({
 export async function POST(req: Request) {
   const auth = await requireUserForApi();
   if (!auth.ok) return auth.response;
+  if (!isPro(auth.user)) {
+    return NextResponse.json({ error: upgradeMessage("Garmin sync"), upgrade: true }, { status: 402 });
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = connectSchema.safeParse(body);

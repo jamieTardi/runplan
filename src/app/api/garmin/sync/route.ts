@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireUserForApi } from "@/lib/auth/api";
+import { isPro, upgradeMessage } from "@/lib/billing/plan";
 import { GarminError } from "@/lib/garmin/client";
 import { syncGarminForUser } from "@/lib/garmin/sync";
 
 export async function POST() {
   const auth = await requireUserForApi();
   if (!auth.ok) return auth.response;
+  if (!isPro(auth.user)) {
+    return NextResponse.json({ error: upgradeMessage("Garmin sync"), upgrade: true }, { status: 402 });
+  }
 
   try {
     const result = await syncGarminForUser(auth.user.id);

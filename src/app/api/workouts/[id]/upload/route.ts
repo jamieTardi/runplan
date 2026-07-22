@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { garminActivityCache, plans, workouts } from "@/db/schema";
 import { requireUserForApi } from "@/lib/auth/api";
+import { isPro, upgradeMessage } from "@/lib/billing/plan";
 import { FitParseError, parseFitActivity } from "@/lib/fit/parseActivity";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireUserForApi();
   if (!auth.ok) return auth.response;
+  if (!isPro(auth.user)) {
+    return NextResponse.json({ error: upgradeMessage("Activity upload"), upgrade: true }, { status: 402 });
+  }
 
   const { id } = await params;
   const [row] = await db

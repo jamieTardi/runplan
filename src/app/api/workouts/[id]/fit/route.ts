@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
 import { requireUserForApi } from "@/lib/auth/api";
+import { isPro, upgradeMessage } from "@/lib/billing/plan";
 import { paceZones } from "@/lib/plan/vdot";
 import { WORKOUT_META } from "@/lib/planMeta";
 import { buildWorkoutSteps } from "@/lib/fit/steps";
@@ -13,6 +14,9 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireUserForApi();
   if (!auth.ok) return auth.response;
+  if (!isPro(auth.user)) {
+    return NextResponse.json({ error: upgradeMessage("FIT workout export"), upgrade: true }, { status: 402 });
+  }
 
   const { id } = await params;
   const [row] = await db

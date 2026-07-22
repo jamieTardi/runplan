@@ -87,6 +87,8 @@ browser (for the live preview in the plan builder).
   (Leaflet/OSM), heart-rate / pace / elevation charts, and a laps table. Activity detail is
   fetched once and cached. No API? Upload the activity's `.fit` (or "Export Original"
   `.zip`) manually and get the same page.
+- **RunPlan Pro** — optional Stripe-billed subscription (unlimited plans, Garmin sync,
+  activity detail, FIT export/upload); the plan generator and manual tracking stay free.
 - **Account security** — strong password policy, rate-limited auth, email verification,
   password reset (bring your own SMTP), **Google sign-in**, and **passkey sign-in**
   (WebAuthn): fingerprint/face login on any device, including the Android app.

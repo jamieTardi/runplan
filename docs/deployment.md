@@ -14,6 +14,7 @@ This page covers the production details beyond the README quick start.
 | `APP_URL` | for password reset + passkeys | public base URL, e.g. `https://runplan.example.com` — used in reset-email links and as the WebAuthn origin/RP ID |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset & verification emails | any SMTP provider. Unset = the flows still respond normally but no email is sent (logged server-side) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for "Continue with Google" | OAuth web client from the [Google Cloud console](https://console.cloud.google.com/apis/credentials); authorized redirect URI must be `${APP_URL}/api/auth/google/callback`. Unset = the Google buttons are hidden |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` / `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY` | for RunPlan Pro billing | see [Billing](#billing-runplan-pro). Unset = billing UI hidden (Pro gates still apply) |
 
 A good free SMTP provider is [Resend](https://resend.com) (3k emails/month): verify your
 domain with the 3 DNS records they give you, create an API key, then
@@ -136,6 +137,22 @@ just reconnects in Settings.
   erroring Google Password Manager usually wants a Play services update; RunPlan retries
   creation once with relaxed options on a bare `UnknownError`, and every prompt has a
   Cancel and a 75s timeout so the UI can't be trapped.
+
+## Billing (RunPlan Pro)
+
+Subscriptions via Stripe Checkout + Customer Portal; no card data touches the app.
+
+- **Tiers**: free = full plan generator, 1 active plan, manual tracking, PDF export.
+  Pro = unlimited plans, Garmin sync + activity detail, FIT export/upload. Users can be
+  `free`, `pro` (Stripe-managed, `plan_expires_at` = paid-through + 3-day grace) or
+  `comp` (complimentary, never expires, never touched by webhooks).
+- **Setup**: create a Product with two recurring Prices (monthly/yearly) in the Stripe
+  dashboard, a webhook endpoint for `${APP_URL}/api/billing/webhook` subscribed to
+  `customer.subscription.*` events, and fill the four env vars.
+- **Enforcement** is server-side on every gated route (402 + upgrade message); the
+  scheduled Garmin sync skips non-pro users. Webhook retries are deduped via the
+  `billing_events` table.
+- The customer portal (cancel/resume/update card) is linked from Settings → RunPlan Pro.
 
 ## Reverse proxy / HTTPS
 

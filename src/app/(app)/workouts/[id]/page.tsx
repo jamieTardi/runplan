@@ -9,6 +9,7 @@ import { WORKOUT_META } from "@/lib/planMeta";
 import { formatDistance, formatDuration, formatPace, formatPaceRange } from "@/lib/units";
 import { isoDayOfWeek } from "@/lib/plan/dates";
 import { GarminPanel } from "@/components/workout/GarminPanel";
+import { isPro } from "@/lib/billing/plan";
 import { UploadFit } from "@/components/workout/UploadFit";
 import type { WorkoutSegment } from "@/lib/plan/types";
 
@@ -33,6 +34,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   if (!row || row.ownerId !== user.id) notFound();
 
   const w = row.workout;
+  const pro = isPro(user);
   const meta = WORKOUT_META[w.type];
   const unit = user.unitPref;
   const dateISO = String(w.date).slice(0, 10);
@@ -61,7 +63,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
             />
             {meta.label} — {fmtDayDate(dateISO)}
           </h1>
-          {w.type !== "rest" && (
+          {w.type !== "rest" && pro && (
             <a className="btn btn-ghost" href={`/api/workouts/${w.id}/fit`}>
               <Watch size={16} /> .FIT
             </a>
@@ -131,7 +133,15 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         </section>
       </div>
 
-      {w.garminActivityId ? (
+      {!pro ? (
+        <section className="card p-5">
+          <h2 className="font-bold mb-2">Garmin activity</h2>
+          <p className="text-sm" style={{ color: "var(--faint)" }}>
+            Route maps, heart rate, pace and laps from your Garmin runs are part of{" "}
+            <Link href="/settings" style={{ color: "var(--primary)" }}>RunPlan Pro</Link>.
+          </p>
+        </section>
+      ) : w.garminActivityId ? (
         <GarminPanel workoutId={w.id} unit={unit} />
       ) : (
         <section className="card p-5 flex flex-col gap-3">

@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { users } from "@/db/schema";
+import { isPro } from "@/lib/billing/plan";
 import { listGarminAccounts } from "@/lib/garmin/store";
 import { syncGarminForUser } from "@/lib/garmin/sync";
 
@@ -14,6 +18,8 @@ export async function POST(req: Request) {
   const accounts = await listGarminAccounts();
   const results: Array<{ userId: string; scanned?: number; matched?: number; error?: string }> = [];
   for (const account of accounts) {
+    const [owner] = await db.select().from(users).where(eq(users.id, account.userId)).limit(1);
+    if (!owner || !isPro(owner)) continue; // Garmin sync is a Pro feature
     try {
       const result = await syncGarminForUser(account.userId);
       if (result) results.push({ userId: account.userId, ...result });
