@@ -223,6 +223,8 @@ export const workouts = pgTable(
     notes: text("notes"),
     // Garmin activity this workout was completed from (set by the sync).
     garminActivityId: bigint("garmin_activity_id", { mode: "number" }),
+    // Garmin Connect structured workout created by "Send to Garmin" (for replace-on-resend).
+    garminWorkoutId: bigint("garmin_workout_id", { mode: "number" }),
   },
   (t) => [index("workouts_plan_idx").on(t.planId), index("workouts_week_idx").on(t.weekId)],
 );

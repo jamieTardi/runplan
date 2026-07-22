@@ -1,0 +1,1 @@
+ALTER TABLE "workouts" ADD COLUMN "garmin_workout_id" bigint;

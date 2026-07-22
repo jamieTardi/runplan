@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Watch } from "lucide-react";
+import { BarChart3, Send, Watch } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { WORKOUT_META } from "@/lib/planMeta";
 import { workoutTypes, type WorkoutType } from "@/db/schema";
@@ -50,6 +50,22 @@ export function EditWorkoutDialog({
   const [notes, setNotes] = useState(day.notes ?? "");
   const [type, setType] = useState<WorkoutType>(day.type);
   const [plannedDist, setPlannedDist] = useState(String(+fromKm(day.distanceKm).toFixed(2)));
+  const [garminState, setGarminState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [garminError, setGarminError] = useState<string | null>(null);
+
+  async function sendToGarmin() {
+    setGarminState("sending");
+    setGarminError(null);
+    try {
+      const res = await fetch(`/api/workouts/${day.id}/garmin`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Sending to Garmin failed");
+      setGarminState("sent");
+    } catch (err) {
+      setGarminState("error");
+      setGarminError(err instanceof Error ? err.message : "Sending to Garmin failed");
+    }
+  }
 
   function save() {
     const patch: WorkoutPatch = { completed };
@@ -162,6 +178,17 @@ export function EditWorkoutDialog({
               >
                 <Watch size={16} /> <span className="hidden sm:inline">.FIT</span>
               </a>
+              <button
+                className="btn btn-ghost"
+                onClick={sendToGarmin}
+                disabled={garminState === "sending" || garminState === "sent"}
+                title="Create this workout in Garmin Connect, scheduled on this date — it syncs to your watch automatically"
+              >
+                <Send size={16} />{" "}
+                <span className="hidden sm:inline">
+                  {garminState === "sending" ? "Sending…" : garminState === "sent" ? "Sent ✓" : "To Garmin"}
+                </span>
+              </button>
             </>
           )}
           <div className="flex gap-2 justify-end flex-1">
@@ -173,6 +200,16 @@ export function EditWorkoutDialog({
             </button>
           </div>
         </div>
+        {garminState === "sent" && (
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Scheduled in Garmin Connect — it will appear on your watch after its next sync.
+          </p>
+        )}
+        {garminError && (
+          <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>
+            {garminError}
+          </p>
+        )}
       </div>
     </Modal>
   );
