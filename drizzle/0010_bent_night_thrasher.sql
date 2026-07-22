@@ -1,0 +1,1 @@
+ALTER TABLE "garmin_accounts" ADD COLUMN "auto_send" boolean DEFAULT true NOT NULL;

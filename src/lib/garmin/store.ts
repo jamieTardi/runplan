@@ -31,6 +31,10 @@ export async function saveGarminTokens(userId: string, tokens: IGarminTokens): P
   await db.update(garminAccounts).set({ tokens }).where(eq(garminAccounts.userId, userId));
 }
 
+export async function setGarminAutoSend(userId: string, autoSend: boolean): Promise<void> {
+  await db.update(garminAccounts).set({ autoSend }).where(eq(garminAccounts.userId, userId));
+}
+
 export async function markGarminSynced(userId: string, tokens: IGarminTokens): Promise<void> {
   await db
     .update(garminAccounts)

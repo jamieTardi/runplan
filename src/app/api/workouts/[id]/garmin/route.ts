@@ -6,10 +6,7 @@ import { requireUserForApi } from "@/lib/auth/api";
 import { isPro, upgradeMessage } from "@/lib/billing/plan";
 import { GarminError } from "@/lib/garmin/client";
 import { getActivityData } from "@/lib/garmin/activity";
-import { pushWorkoutToGarmin } from "@/lib/garmin/pushWorkout";
-import { paceZones } from "@/lib/plan/vdot";
-import { WORKOUT_META } from "@/lib/planMeta";
-import { buildWorkoutSteps } from "@/lib/fit/steps";
+import { sendPlannedWorkoutToGarmin } from "@/lib/garmin/pushWorkout";
 
 export const dynamic = "force-dynamic";
 
@@ -65,35 +62,20 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (row.ownerId !== auth.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const w = row.workout;
-  const steps = buildWorkoutSteps(
-    {
-      type: w.type,
-      distanceKm: w.distanceKm,
-      paceLowSPerKm: w.paceLowSPerKm,
-      paceHighSPerKm: w.paceHighSPerKm,
-      segments: w.segments as Parameters<typeof buildWorkoutSteps>[0]["segments"],
-      description: w.description,
-    },
-    paceZones(row.currentVdot),
-  );
-  if (!steps) {
-    return NextResponse.json({ error: "Rest days have nothing to send" }, { status: 400 });
-  }
-
-  const dateISO = String(w.date).slice(0, 10);
-  const name = `${WORKOUT_META[w.type].label} ${Math.round(w.distanceKm)}k — RunPlan`;
-
   try {
-    const { garminWorkoutId } = await pushWorkoutToGarmin({
-      userId: auth.user.id,
-      name,
-      items: steps,
-      dateISO,
-      replaceWorkoutId: w.garminWorkoutId,
+    const garminWorkoutId = await sendPlannedWorkoutToGarmin(
+      auth.user.id,
+      row.workout,
+      row.currentVdot,
+    );
+    if (!garminWorkoutId) {
+      return NextResponse.json({ error: "Rest days have nothing to send" }, { status: 400 });
+    }
+    return NextResponse.json({
+      ok: true,
+      garminWorkoutId,
+      date: String(row.workout.date).slice(0, 10),
     });
-    await db.update(workouts).set({ garminWorkoutId }).where(eq(workouts.id, w.id));
-    return NextResponse.json({ ok: true, garminWorkoutId, date: dateISO });
   } catch (err) {
     if (err instanceof GarminError) {
       return NextResponse.json({ error: err.message }, { status: 502 });

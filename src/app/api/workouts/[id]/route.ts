@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { plans, workoutTypes, workouts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { sendPlannedWorkoutToGarmin } from "@/lib/garmin/pushWorkout";
 
 const patchSchema = z.object({
   completed: z.boolean().optional(),
@@ -29,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Verify ownership via the parent plan.
   const [row] = await db
-    .select({ workoutId: workouts.id, ownerId: plans.userId })
+    .select({ workoutId: workouts.id, ownerId: plans.userId, currentVdot: plans.currentVdot })
     .from(workouts)
     .innerJoin(plans, eq(workouts.planId, plans.id))
     .where(eq(workouts.id, id))
@@ -49,6 +50,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .set(update)
     .where(eq(workouts.id, id))
     .returning();
+
+  // If the planned session changed after it was sent to Garmin, re-push it so
+  // the watch copy doesn't go stale. Best-effort: an offline Garmin must not
+  // fail the edit itself.
+  const plannedChanged =
+    data.type !== undefined ||
+    data.distanceKm !== undefined ||
+    data.date !== undefined ||
+    data.description !== undefined;
+  if (plannedChanged && updated.garminWorkoutId && !updated.completed) {
+    try {
+      await sendPlannedWorkoutToGarmin(user.id, updated, row.currentVdot);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Re-sending edited workout ${updated.id} to Garmin failed:`, msg);
+    }
+  }
 
   return NextResponse.json({ workout: updated });
 }

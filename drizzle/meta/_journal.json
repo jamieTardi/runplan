@@ -71,6 +71,13 @@
       "when": 1784741109109,
       "tag": "0009_bizarre_tomorrow_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784742247279,
+      "tag": "0010_bent_night_thrasher",
+      "breakpoints": true
     }
   ]
 }

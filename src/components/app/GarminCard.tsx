@@ -8,15 +8,18 @@ export function GarminCard({
   initialConnected,
   initialUserName,
   initialLastSyncAt,
+  initialAutoSend,
 }: {
   initialConnected: boolean;
   initialUserName: string | null;
   initialLastSyncAt: string | null;
+  initialAutoSend: boolean;
 }) {
   const router = useRouter();
   const [connected, setConnected] = useState(initialConnected);
   const [userName, setUserName] = useState(initialUserName);
   const [lastSyncAt, setLastSyncAt] = useState(initialLastSyncAt);
+  const [autoSend, setAutoSend] = useState(initialAutoSend);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,14 +28,42 @@ export function GarminCard({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  function finishConnect(garminUserName: string | null) {
+  function finishConnect(garminUserName: string | null, autoSent?: number) {
     setConnected(true);
     setUserName(garminUserName);
     setEmail("");
     setPassword("");
     setMfaToken(null);
     setMfaCode("");
-    setMsg({ ok: true, text: "Connected to Garmin" });
+    setAutoSend(true);
+    setMsg({
+      ok: true,
+      text: autoSent
+        ? `Connected to Garmin — sent ${autoSent} upcoming workout${autoSent === 1 ? "" : "s"} to your watch`
+        : "Connected to Garmin",
+    });
+  }
+
+  async function toggleAutoSend(next: boolean) {
+    setAutoSend(next); // optimistic — reverted on failure
+    setMsg(null);
+    const res = await fetch("/api/garmin", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autoSend: next }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setAutoSend(!next);
+      setMsg({ ok: false, text: data.error ?? "Failed to update the setting" });
+      return;
+    }
+    if (next && data.autoSent > 0) {
+      setMsg({
+        ok: true,
+        text: `Sent ${data.autoSent} upcoming workout${data.autoSent === 1 ? "" : "s"} to your watch`,
+      });
+    }
   }
 
   async function connect() {
@@ -54,7 +85,7 @@ export function GarminCard({
       setMsg({ ok: true, text: "Garmin sent you a verification code — enter it below." });
       return;
     }
-    finishConnect(data.garminUserName ?? null);
+    finishConnect(data.garminUserName ?? null, data.autoSent);
   }
 
   async function verifyMfa() {
@@ -77,7 +108,7 @@ export function GarminCard({
       setMsg({ ok: false, text: data.error ?? "Verification failed" });
       return;
     }
-    finishConnect(data.garminUserName ?? null);
+    finishConnect(data.garminUserName ?? null, data.autoSent);
   }
 
   async function syncNow() {
@@ -91,13 +122,15 @@ export function GarminCard({
       return;
     }
     setLastSyncAt(new Date().toISOString());
-    setMsg({
-      ok: true,
-      text:
-        data.matched > 0
-          ? `Marked ${data.matched} workout${data.matched === 1 ? "" : "s"} complete (${data.scanned} recent run${data.scanned === 1 ? "" : "s"} scanned)`
-          : `No new matches (${data.scanned} recent run${data.scanned === 1 ? "" : "s"} scanned)`,
-    });
+    const base =
+      data.matched > 0
+        ? `Marked ${data.matched} workout${data.matched === 1 ? "" : "s"} complete (${data.scanned} recent run${data.scanned === 1 ? "" : "s"} scanned)`
+        : `No new matches (${data.scanned} recent run${data.scanned === 1 ? "" : "s"} scanned)`;
+    const sent =
+      data.autoSent > 0
+        ? ` — sent ${data.autoSent} upcoming workout${data.autoSent === 1 ? "" : "s"} to your watch`
+        : "";
+    setMsg({ ok: true, text: base + sent });
     router.refresh();
   }
 
@@ -129,6 +162,27 @@ export function GarminCard({
             Recent Garmin runs are matched to planned sessions by date and distance, marking them
             complete with the actual distance and time. Runs also sync automatically once a day.
           </p>
+          <label
+            className="flex items-start gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
+            style={{ background: "var(--surface-2)" }}
+          >
+            <input
+              type="checkbox"
+              checked={autoSend}
+              onChange={(e) => toggleAutoSend(e.target.checked)}
+              disabled={busy}
+              className="h-5 w-5 mt-0.5 accent-[var(--accent)]"
+            />
+            <span>
+              <span className="font-semibold text-sm block">
+                Send workouts to my watch automatically
+              </span>
+              <span className="text-xs" style={{ color: "var(--faint)" }}>
+                Each daily sync pushes the coming week&apos;s planned sessions to Garmin Connect as
+                scheduled workouts, so they&apos;re waiting on your watch.
+              </span>
+            </span>
+          </label>
           {msg && (
             <p className="text-sm" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>
           )}

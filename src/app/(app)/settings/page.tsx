@@ -27,6 +27,7 @@ export default async function SettingsPage({
           initialConnected={!!garmin}
           initialUserName={garmin?.garminUserName ?? null}
           initialLastSyncAt={garmin?.lastSyncAt?.toISOString() ?? null}
+          initialAutoSend={garmin?.autoSend ?? true}
         />
         {verified === "1" && (
           <p className="text-sm rounded-lg px-3 py-2" style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}>

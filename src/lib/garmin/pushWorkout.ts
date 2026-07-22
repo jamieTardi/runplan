@@ -1,8 +1,13 @@
 import "server-only";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { workouts } from "@/db/schema";
 import { GarminError, clientFromTokens } from "./client";
 import { getGarminAccount, saveGarminTokens } from "./store";
 import { toGarminWorkout } from "./workoutDto";
-import type { FitPlanItem } from "@/lib/fit/steps";
+import { buildWorkoutSteps, type FitPlanItem } from "@/lib/fit/steps";
+import { paceZones } from "@/lib/plan/vdot";
+import { WORKOUT_META } from "@/lib/planMeta";
 
 const GC_API = "https://connectapi.garmin.com";
 
@@ -67,4 +72,53 @@ export async function pushWorkoutToGarmin(opts: {
   }
 
   return { garminWorkoutId };
+}
+
+type WorkoutRow = typeof workouts.$inferSelect;
+export type PlannedWorkoutForSend = Pick<
+  WorkoutRow,
+  | "id"
+  | "date"
+  | "type"
+  | "distanceKm"
+  | "paceLowSPerKm"
+  | "paceHighSPerKm"
+  | "segments"
+  | "description"
+  | "garminWorkoutId"
+>;
+
+/**
+ * Send one planned session to Garmin Connect (replacing any earlier send)
+ * and record the new workout id on the row. Returns null when there is
+ * nothing to send (rest day / zero distance).
+ */
+export async function sendPlannedWorkoutToGarmin(
+  userId: string,
+  w: PlannedWorkoutForSend,
+  currentVdot: number,
+): Promise<number | null> {
+  const steps = buildWorkoutSteps(
+    {
+      type: w.type,
+      distanceKm: w.distanceKm,
+      paceLowSPerKm: w.paceLowSPerKm,
+      paceHighSPerKm: w.paceHighSPerKm,
+      segments: w.segments as Parameters<typeof buildWorkoutSteps>[0]["segments"],
+      description: w.description,
+    },
+    paceZones(currentVdot),
+  );
+  if (!steps) return null;
+
+  const dateISO = String(w.date).slice(0, 10);
+  const { garminWorkoutId } = await pushWorkoutToGarmin({
+    userId,
+    name: `${WORKOUT_META[w.type].label} ${Math.round(w.distanceKm)}k — RunPlan`,
+    items: steps,
+    dateISO,
+    replaceWorkoutId: w.garminWorkoutId,
+  });
+  await db.update(workouts).set({ garminWorkoutId }).where(eq(workouts.id, w.id));
+  return garminWorkoutId;
 }

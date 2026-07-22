@@ -6,6 +6,7 @@ import { plans, workouts } from "@/db/schema";
 import { addDaysISO, todayISO } from "@/lib/plan/dates";
 import { clientFromTokens, GarminError } from "./client";
 import { getGarminAccount, markGarminSynced } from "./store";
+import { autoSendUpcomingWorkouts } from "./autoSend";
 import {
   activityDateISO,
   isRunningActivity,
@@ -25,6 +26,8 @@ export interface SyncResult {
   scanned: number;
   /** Workouts marked complete this sync. */
   matched: number;
+  /** Upcoming sessions auto-sent to Garmin Connect (0 when auto-send is off). */
+  autoSent: number;
 }
 
 function toSummary(a: IActivity): GarminActivitySummary {
@@ -130,5 +133,11 @@ export async function syncGarminForUser(userId: string): Promise<SyncResult | nu
   // Tokens rotate when the client refreshes them mid-sync — persist the latest.
   await markGarminSynced(userId, client.exportToken());
 
-  return { scanned: runs.length, matched: matches.length };
+  // With auto-send on, keep the coming week's sessions queued on the watch.
+  let autoSent = 0;
+  if (account.autoSend) {
+    autoSent = (await autoSendUpcomingWorkouts(userId)).sent;
+  }
+
+  return { scanned: runs.length, matched: matches.length, autoSent };
 }

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserForApi } from "@/lib/auth/api";
 import { completeGarminMfa, GarminError } from "@/lib/garmin/client";
-import { upsertGarminAccount } from "@/lib/garmin/store";
+import { getGarminAccount, upsertGarminAccount } from "@/lib/garmin/store";
+import { autoSendUpcomingWorkouts } from "@/lib/garmin/autoSend";
 
 const schema = z.object({
   mfaToken: z.string().uuid(),
@@ -20,7 +21,15 @@ export async function POST(req: Request) {
   try {
     const { garminUserName, tokens } = await completeGarminMfa(parsed.data.mfaToken, parsed.data.code);
     await upsertGarminAccount(auth.user.id, garminUserName, tokens);
-    return NextResponse.json({ connected: true, garminUserName });
+    // Auto-send defaults on: queue the coming week's sessions right away.
+    let autoSent = 0;
+    try {
+      const account = await getGarminAccount(auth.user.id);
+      if (account?.autoSend) autoSent = (await autoSendUpcomingWorkouts(auth.user.id)).sent;
+    } catch (err) {
+      console.error("Post-connect auto-send failed:", err);
+    }
+    return NextResponse.json({ connected: true, garminUserName, autoSent });
   } catch (err) {
     if (err instanceof GarminError) {
       return NextResponse.json({ error: err.message }, { status: 400 });

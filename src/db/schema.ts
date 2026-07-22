@@ -256,6 +256,8 @@ export const garminAccounts = pgTable("garmin_accounts", {
   // OAuth1 + OAuth2 tokens exported by the Garmin client. The Garmin password
   // is never stored; tokens rotate in place when the client refreshes them.
   tokens: jsonb("tokens").notNull(),
+  // Auto-push the coming week's planned sessions to Garmin Connect on each sync.
+  autoSend: boolean("auto_send").notNull().default(true),
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
