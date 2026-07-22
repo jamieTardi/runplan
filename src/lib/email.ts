@@ -23,6 +23,13 @@ export function appUrl(): string {
   return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
+/** Short operational notification to the site owner (ADMIN_EMAIL). */
+export async function sendAdminEmail(subject: string, text: string): Promise<void> {
+  const to = process.env.ADMIN_EMAIL;
+  if (!to || !isEmailConfigured()) return;
+  await transport().sendMail({ from: process.env.SMTP_FROM, to, subject, text });
+}
+
 export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
   if (!isEmailConfigured()) {
     console.warn("Verification email skipped — SMTP is not configured.");

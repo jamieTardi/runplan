@@ -30,6 +30,8 @@ export const users = pgTable("users", {
   // For "pro": end of the paid period (+grace). Null for free/comp.
   planExpiresAt: timestamp("plan_expires_at", { withTimezone: true }),
   stripeCustomerId: text("stripe_customer_id"),
+  // Admin panel access. Set via SQL only — never through the API.
+  isAdmin: boolean("is_admin").notNull().default(false),
   // Display-unit preference; canonical storage is always metric.
   unitPref: text("unit_pref", { enum: ["km", "mi"] }).notNull().default("km"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

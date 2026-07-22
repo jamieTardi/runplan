@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarPlus, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { CalendarPlus, LayoutDashboard, LogOut, Settings, Shield } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserProvider, useUser, type SessionUser } from "./UserProvider";
@@ -12,6 +12,7 @@ const NAV = [
   { href: "/plans/new", label: "New plan", icon: CalendarPlus },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+const ADMIN_NAV = { href: "/admin", label: "Admin", icon: Shield };
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -39,7 +40,7 @@ function TopBar() {
         </Link>
 
         <nav className="hidden sm:flex items-center gap-1">
-          {NAV.map((item) => {
+          {(user.isAdmin ? [...NAV, ADMIN_NAV] : NAV).map((item) => {
             const active = isActive(pathname, item.href);
             return (
               <Link

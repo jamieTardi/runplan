@@ -153,6 +153,10 @@ Subscriptions via Stripe Checkout + Customer Portal; no card data touches the ap
   scheduled Garmin sync skips non-pro users. Webhook retries are deduped via the
   `billing_events` table.
 - The customer portal (cancel/resume/update card) is linked from Settings → RunPlan Pro.
+- **Admin panel**: set `is_admin = true` on your user row (SQL only, by design) and an
+  **Admin** nav item appears — user list with plan badges and paid-through dates,
+  grant/revoke complimentary Pro, delete users. Set `ADMIN_EMAIL` to get an email when
+  someone subscribes or cancels.
 
 ## Reverse proxy / HTTPS
 

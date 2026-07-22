@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { billingEvents, users } from "@/db/schema";
 import { stripe } from "@/lib/billing/stripe";
+import { sendAdminEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,20 @@ async function applySubscription(sub: Stripe.Subscription): Promise<void> {
       .update(users)
       .set({ plan: "pro", planExpiresAt: end ? new Date(end + GRACE_MS) : null })
       .where(eq(users.id, user.id));
+    if (user.plan !== "pro") {
+      sendAdminEmail(
+        "RunPlan: new Pro subscriber 🎉",
+        `${user.name} <${user.email}> is now on Pro (status: ${sub.status}).`,
+      ).catch(() => {});
+    }
   } else {
     await db.update(users).set({ plan: "free", planExpiresAt: null }).where(eq(users.id, user.id));
+    if (user.plan === "pro") {
+      sendAdminEmail(
+        "RunPlan: subscription ended",
+        `${user.name} <${user.email}> dropped to free (status: ${sub.status}).`,
+      ).catch(() => {});
+    }
   }
 }
 
