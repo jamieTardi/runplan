@@ -28,9 +28,12 @@ export function RouteMap({
 
       map = L.map(ref.current, {
         zoomControl: true,
-        scrollWheelZoom: true, // wheel zoom while the pointer is over the map
+        scrollWheelZoom: false, // enabled on click, so page scrolling isn't hijacked
         attributionControl: true,
       });
+      // Click to arm wheel zoom; leaving the map disarms it again.
+      map.on("click", () => map?.scrollWheelZoom.enable());
+      map.on("mouseout", () => map?.scrollWheelZoom.disable());
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
