@@ -227,6 +227,20 @@ export const workouts = pgTable(
   (t) => [index("workouts_plan_idx").on(t.planId), index("workouts_week_idx").on(t.weekId)],
 );
 
+// Uploaded race-course GPX, one per plan (route + elevation, downsampled).
+export const raceCourses = pgTable("race_courses", {
+  planId: uuid("plan_id")
+    .primaryKey()
+    .references(() => plans.id, { onDelete: "cascade" }),
+  name: text("name"),
+  distanceM: real("distance_m").notNull(),
+  elevGainM: real("elev_gain_m"),
+  elevLossM: real("elev_loss_m"),
+  route: jsonb("route").notNull(), // [[lat, lng], …]
+  elevSeries: jsonb("elev_series").notNull(), // [{dM, elevM}, …]
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // Garmin Connect integration
 // ---------------------------------------------------------------------------
@@ -290,4 +304,5 @@ export type Week = typeof weeks.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
 export type GarminAccount = typeof garminAccounts.$inferSelect;
+export type RaceCourse = typeof raceCourses.$inferSelect;
 export type Passkey = typeof passkeys.$inferSelect;

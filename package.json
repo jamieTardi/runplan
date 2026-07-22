@@ -28,6 +28,7 @@
     "@radix-ui/react-dropdown-menu": "^2.1.21",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
+    "fast-xml-parser": "^5.10.1",
     "fflate": "^0.8.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.25.0",

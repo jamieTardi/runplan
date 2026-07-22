@@ -5,12 +5,30 @@ import type { PlanVM } from "@/lib/plan/viewModel";
 import type { WorkoutSegment } from "@/lib/plan/types";
 import type { PlanInput } from "@/lib/plan/inputSchema";
 import { PlanView } from "@/components/plan/PlanView";
+import { RaceCard, type RaceCourseVM } from "@/components/plan/RaceCard";
+import { raceLabel } from "@/lib/planMeta";
+import { raceDistanceM } from "@/lib/plan/vdot";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { raceCourses } from "@/db/schema";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
   const plan = await getPlanDetail(user.id, id);
   if (!plan) notFound();
+
+  const [courseRow] = await db.select().from(raceCourses).where(eq(raceCourses.planId, id)).limit(1);
+  const course: RaceCourseVM | null = courseRow
+    ? {
+        name: courseRow.name,
+        distanceM: courseRow.distanceM,
+        elevGainM: courseRow.elevGainM,
+        elevLossM: courseRow.elevLossM,
+        route: courseRow.route as [number, number][],
+        elevSeries: courseRow.elevSeries as { dM: number; elevM: number }[],
+      }
+    : null;
 
   const vm: PlanVM = {
     id: plan.id,
@@ -52,5 +70,18 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     })),
   };
 
-  return <PlanView plan={vm} unit={user.unitPref} />;
+  return (
+    <div className="flex flex-col gap-5">
+      <RaceCard
+        planId={plan.id}
+        raceLabel={raceLabel(plan.raceType, plan.customDistanceKm, user.unitPref)}
+        raceDateISO={String(plan.raceDate).slice(0, 10)}
+        goalTimeS={plan.goalTimeS}
+        raceDistanceKm={raceDistanceM(plan.raceType, plan.customDistanceKm) / 1000}
+        unit={user.unitPref}
+        course={course}
+      />
+      <PlanView plan={vm} unit={user.unitPref} />
+    </div>
+  );
 }
