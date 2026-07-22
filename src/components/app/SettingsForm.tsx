@@ -6,6 +6,7 @@ import { Check, LogOut, Smartphone } from "lucide-react";
 import type { Unit } from "@/lib/units";
 import { ThemeToggle } from "./ThemeToggle";
 import { FontSizeControl } from "./FontSizeControl";
+import { PasskeysCard } from "./PasskeysCard";
 
 export function SettingsForm({
   initialName,
@@ -126,6 +127,8 @@ export function SettingsForm({
           <Smartphone size={16} /> Download for Android (.apk)
         </a>
       </section>
+
+      <PasskeysCard />
 
       <section className="card p-5">
         <h2 className="font-bold mb-4">Profile</h2>

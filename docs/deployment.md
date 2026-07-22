@@ -11,6 +11,8 @@ This page covers the production details beyond the README quick start.
 | `DATABASE_URL` | production | Postgres connection string (PGlite is used when unset — dev only) |
 | `CRON_SECRET` | for scheduled Garmin sync | shared secret for `POST /api/garmin/sync-all` |
 | `ALLOW_INSECURE_COOKIES=1` | only for plain-HTTP LAN deployments | drops the `Secure` cookie flag; remove behind HTTPS |
+| `APP_URL` | for password reset + passkeys | public base URL, e.g. `https://runplan.example.com` — used in reset-email links and as the WebAuthn origin/RP ID |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset emails | any SMTP provider (a Gmail app password works). Unset = the forgot-password UI still responds normally but no email is sent (logged server-side) |
 
 ## Systemd service
 
@@ -93,6 +95,17 @@ systemctl daemon-reload && systemctl enable --now runplan-garmin-sync.timer
 
 The endpoint returns per-user results and logs failures; a user whose tokens went stale
 just reconnects in Settings.
+
+## Account security
+
+- **Password reset** emails require the `SMTP_*` variables and `APP_URL`. Tokens are
+  single-use, SHA-256-hashed at rest, valid for 1 hour, and a successful reset signs the
+  user out everywhere. The endpoint is rate-limited and never reveals whether an address
+  has an account.
+- **Passkeys (WebAuthn)** need no configuration beyond `APP_URL` and HTTPS. Users add a
+  passkey in **Settings → Passkeys** (fingerprint/face/PIN on that device) and can then
+  use *Sign in with a passkey* on the login page — including inside the Android app.
+  Passkeys are origin-bound: they only work on the `APP_URL` domain, not via a LAN IP.
 
 ## Reverse proxy / HTTPS
 

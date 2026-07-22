@@ -1,4 +1,5 @@
 import { AuthForm } from "@/components/auth/AuthForm";
+import { PasskeyLoginButton } from "@/components/auth/PasskeyLoginButton";
 
 export default function LoginPage() {
   return (
@@ -8,6 +9,9 @@ export default function LoginPage() {
         Sign in to your training plans.
       </p>
       <AuthForm mode="login" />
+      <div className="mt-4">
+        <PasskeyLoginButton />
+      </div>
     </div>
   );
 }

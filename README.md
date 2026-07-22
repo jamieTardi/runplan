@@ -87,6 +87,8 @@ browser (for the live preview in the plan builder).
   (Leaflet/OSM), heart-rate / pace / elevation charts, and a laps table. Activity detail is
   fetched once and cached. No API? Upload the activity's `.fit` (or "Export Original"
   `.zip`) manually and get the same page.
+- **Account security** — email password reset (bring your own SMTP) and **passkey
+  sign-in** (WebAuthn): fingerprint/face login on any device, including the Android app.
 - **Switchable units** (km ⇄ mi), **light/dark theme**, **adjustable text size**, fully
   mobile-friendly.
 - **Installable app** — RunPlan is a PWA (manifest + service worker + offline fallback) and

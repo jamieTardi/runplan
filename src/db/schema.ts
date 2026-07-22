@@ -40,6 +40,40 @@ export const sessions = pgTable(
   (t) => [index("sessions_user_idx").on(t.userId)],
 );
 
+// Single-use, short-lived tokens for the email password-reset flow. Only a
+// SHA-256 hash of the token is stored; the raw value lives in the email link.
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_reset_user_idx").on(t.userId)],
+);
+
+// WebAuthn credentials (passkeys) — biometric/device sign-in.
+export const passkeys = pgTable(
+  "passkeys",
+  {
+    // Credential ID as base64url, as produced by the authenticator.
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    publicKey: text("public_key").notNull(), // base64
+    counter: bigint("counter", { mode: "number" }).notNull().default(0),
+    transports: text("transports"), // comma-separated hints
+    name: text("name").notNull().default("Passkey"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (t) => [index("passkeys_user_idx").on(t.userId)],
+);
+
 // ---------------------------------------------------------------------------
 // Training plans
 // ---------------------------------------------------------------------------
@@ -208,3 +242,4 @@ export type Week = typeof weeks.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
 export type GarminAccount = typeof garminAccounts.$inferSelect;
+export type Passkey = typeof passkeys.$inferSelect;

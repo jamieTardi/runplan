@@ -3,7 +3,14 @@ import { SESSION_COOKIE } from "@/lib/auth/constants";
 
 // Public paths that never require a session. The scheduled Garmin sync is
 // session-less by design — its route enforces the CRON_SECRET header itself.
-const PUBLIC_PREFIXES = ["/login", "/register", "/api/auth", "/api/garmin/sync-all"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+  "/api/garmin/sync-all",
+];
 
 // Next 16's request-interception convention (formerly `middleware`).
 export function proxy(req: NextRequest) {
