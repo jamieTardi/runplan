@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, raceCourses } from "@/db/schema";
@@ -66,6 +67,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     elevGainM: course.elevGainM,
     points: route.length,
   });
+}
+
+const patchSchema = z.object({ name: z.string().trim().min(1).max(120) });
+
+// Rename the course.
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireUserForApi();
+  if (!auth.ok) return auth.response;
+
+  const { id } = await params;
+  if (!(await ownPlan(auth.user.id, id))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const body = await req.json().catch(() => null);
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Enter a name (max 120 chars)" }, { status: 400 });
+
+  const updated = await db
+    .update(raceCourses)
+    .set({ name: parsed.data.name })
+    .where(eq(raceCourses.planId, id))
+    .returning({ planId: raceCourses.planId });
+  if (updated.length === 0) return NextResponse.json({ error: "No course uploaded yet" }, { status: 404 });
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

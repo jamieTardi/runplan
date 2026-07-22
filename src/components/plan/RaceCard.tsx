@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Flag, Mountain, Trash2, Upload } from "lucide-react";
+import { Check, Flag, Mountain, Pencil, Trash2, Upload, X } from "lucide-react";
 import { distanceIn, formatDistance, formatDuration, type Unit } from "@/lib/units";
 import { LineChart } from "@/components/workout/LineChart";
 
@@ -59,6 +59,28 @@ export function RaceCard({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+
+  async function saveName() {
+    const name = nameDraft.trim();
+    if (!name) return;
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`/api/plans/${planId}/course`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      setError(data.error ?? "Rename failed");
+      return;
+    }
+    setEditingName(false);
+    router.refresh();
+  }
 
   const days = daysUntil(raceDateISO);
 
@@ -125,18 +147,52 @@ export function RaceCard({
       {course ? (
         <>
           <div className="flex items-center gap-2 flex-wrap text-sm" style={{ color: "var(--muted)" }}>
-            <Mountain size={15} />
-            <span>
-              <strong style={{ color: "var(--foreground)" }}>{formatDistance(course.distanceM / 1000, unit, 1)}</strong>
-              {course.elevGainM != null && (
-                <>
-                  {" · "}
-                  <strong style={{ color: "var(--foreground)" }}>{Math.round(course.elevGainM)} m</strong> climb
-                </>
-              )}
-              {course.elevLossM != null && <> · {Math.round(course.elevLossM)} m descent</>}
-              {course.name && <> · {course.name}</>}
-            </span>
+            <Mountain size={15} className="shrink-0" />
+            {editingName ? (
+              <span className="flex items-center gap-1.5 flex-1 min-w-48">
+                <input
+                  className="input text-sm py-1 flex-1"
+                  value={nameDraft}
+                  maxLength={120}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveName();
+                    if (e.key === "Escape") setEditingName(false);
+                  }}
+                />
+                <button className="btn btn-ghost px-2 py-1" onClick={saveName} disabled={busy} aria-label="Save name">
+                  <Check size={14} />
+                </button>
+                <button className="btn btn-ghost px-2 py-1" onClick={() => setEditingName(false)} aria-label="Cancel">
+                  <X size={14} />
+                </button>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span>
+                  <strong style={{ color: "var(--foreground)" }}>{formatDistance(course.distanceM / 1000, unit, 1)}</strong>
+                  {course.elevGainM != null && (
+                    <>
+                      {" · "}
+                      <strong style={{ color: "var(--foreground)" }}>{Math.round(course.elevGainM)} m</strong> climb
+                    </>
+                  )}
+                  {course.elevLossM != null && <> · {Math.round(course.elevLossM)} m descent</>}
+                  {course.name && <> · {course.name}</>}
+                </span>
+                <button
+                  className="btn btn-ghost px-1.5 py-1"
+                  onClick={() => {
+                    setNameDraft(course.name ?? "");
+                    setEditingName(true);
+                  }}
+                  aria-label="Rename course"
+                >
+                  <Pencil size={13} />
+                </button>
+              </span>
+            )}
           </div>
           {mismatch && (
             <p className="text-xs rounded-lg px-3 py-2" style={{ background: "color-mix(in srgb, var(--danger) 10%, transparent)", color: "var(--danger)" }}>
