@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Fingerprint, Plus, Trash2 } from "lucide-react";
 import { browserSupportsWebAuthn, startRegistration } from "@simplewebauthn/browser";
+import { cancelCeremony, withCeremonyTimeout } from "@/components/auth/passkeyCeremony";
 
 interface PasskeyRow {
   id: string;
@@ -37,7 +38,7 @@ export function PasskeysCard() {
       const options = await optRes.json();
       if (!optRes.ok) throw new Error(options.error ?? "Couldn't start registration");
 
-      const response = await startRegistration({ optionsJSON: options });
+      const response = await withCeremonyTimeout(() => startRegistration({ optionsJSON: options }));
 
       const name =
         /android/i.test(navigator.userAgent) ? "Android device"
@@ -112,9 +113,22 @@ export function PasskeysCard() {
       {msg && (
         <p className="text-sm mb-2" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>
       )}
-      <button className="btn btn-primary self-start" onClick={add} disabled={busy}>
-        <Plus size={16} /> {busy ? "Follow your device's prompt…" : "Add a passkey"}
-      </button>
+      <div className="flex gap-2">
+        <button className="btn btn-primary" onClick={add} disabled={busy}>
+          <Plus size={16} /> {busy ? "Follow your device's prompt…" : "Add a passkey"}
+        </button>
+        {busy && (
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              cancelCeremony();
+              setBusy(false);
+            }}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </section>
   );
 }

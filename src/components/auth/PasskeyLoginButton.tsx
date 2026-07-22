@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Fingerprint } from "lucide-react";
 import { browserSupportsWebAuthn, startAuthentication } from "@simplewebauthn/browser";
+import { cancelCeremony, withCeremonyTimeout } from "./passkeyCeremony";
 
 export function PasskeyLoginButton() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export function PasskeyLoginButton() {
       const { flowId, options, error: optError } = await optRes.json();
       if (!optRes.ok) throw new Error(optError ?? "Couldn't start passkey sign-in");
 
-      const response = await startAuthentication({ optionsJSON: options });
+      const response = await withCeremonyTimeout(() => startAuthentication({ optionsJSON: options }));
 
       const res = await fetch("/api/auth/passkey/login", {
         method: "POST",
@@ -54,6 +55,18 @@ export function PasskeyLoginButton() {
         style={{ border: "1px solid var(--border-strong)" }}>
         <Fingerprint size={17} /> {busy ? "Waiting for passkey…" : "Sign in with a passkey"}
       </button>
+      {busy && (
+        <button
+          type="button"
+          className="btn btn-ghost w-full"
+          onClick={() => {
+            cancelCeremony();
+            setBusy(false);
+          }}
+        >
+          Cancel
+        </button>
+      )}
       {error && (
         <p className="text-sm text-center" style={{ color: "var(--danger)" }}>{error}</p>
       )}
