@@ -93,3 +93,12 @@ browser (for the live preview in the plan builder).
   ships an Android APK (Trusted Web Activity built with Bubblewrap; download it from
   Settings → Install the app, or `/runplan.apk`). `.well-known/assetlinks.json` carries the
   signing-key fingerprint so the app runs full-screen.
+
+## Documentation
+
+| Doc | Covers |
+| --- | --- |
+| [docs/garmin.md](docs/garmin.md) | Connecting Garmin (incl. MFA), how syncing matches runs, the workout detail page, manual FIT upload, troubleshooting |
+| [docs/fit-export.md](docs/fit-export.md) | Exporting planned sessions as structured `.fit` workouts for the watch |
+| [docs/android-app.md](docs/android-app.md) | Installing as an app (PWA / Android APK), TWA architecture, rebuilding and signing the APK |
+| [docs/deployment.md](docs/deployment.md) | Environment variables, systemd units, updating, the scheduled Garmin sync, HTTPS notes |
