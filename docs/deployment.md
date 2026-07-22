@@ -12,7 +12,8 @@ This page covers the production details beyond the README quick start.
 | `CRON_SECRET` | for scheduled Garmin sync | shared secret for `POST /api/garmin/sync-all` |
 | `ALLOW_INSECURE_COOKIES=1` | only for plain-HTTP LAN deployments | drops the `Secure` cookie flag; remove behind HTTPS |
 | `APP_URL` | for password reset + passkeys | public base URL, e.g. `https://runplan.example.com` — used in reset-email links and as the WebAuthn origin/RP ID |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset emails | any SMTP provider. Unset = the forgot-password UI still responds normally but no email is sent (logged server-side) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset & verification emails | any SMTP provider. Unset = the flows still respond normally but no email is sent (logged server-side) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | for "Continue with Google" | OAuth web client from the [Google Cloud console](https://console.cloud.google.com/apis/credentials); authorized redirect URI must be `${APP_URL}/api/auth/google/callback`. Unset = the Google buttons are hidden |
 
 A good free SMTP provider is [Resend](https://resend.com) (3k emails/month): verify your
 domain with the 3 DNS records they give you, create an API key, then
@@ -109,6 +110,15 @@ just reconnects in Settings.
 
 ## Account security
 
+- **Password policy**: minimum 10 characters with a letter, a number and a special
+  character, plus a small common-password denylist — enforced server-side on sign-up,
+  change and reset. Login and registration are rate-limited per IP/email.
+- **Google sign-in**: sign-up and sign-in once `GOOGLE_CLIENT_ID`/`SECRET` are set.
+  Google identities live in `oauth_accounts` (extensible to more providers); an existing
+  password account with the same Google-verified email is linked automatically, and
+  Google-created accounts have no password until one is set via the reset flow.
+- **Email verification**: sign-ups get a 24h verification link; status and resend live in
+  Settings → Account. Google sign-ups with verified emails skip it.
 - **Password reset** emails require the `SMTP_*` variables and `APP_URL`. Tokens are
   single-use, SHA-256-hashed at rest, valid for 1 hour, and a successful reset signs the
   user out everywhere. The endpoint is rate-limited and never reveals whether an address

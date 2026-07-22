@@ -88,11 +88,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           name="password"
           type="password"
           className="input"
-          placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
+          placeholder={mode === "register" ? "10+ characters" : "Your password"}
           required
           autoComplete={mode === "register" ? "new-password" : "current-password"}
-          minLength={mode === "register" ? 8 : undefined}
+          minLength={mode === "register" ? 10 : undefined}
         />
+        {mode === "register" && (
+          <p className="text-xs mt-1" style={{ color: "var(--faint)" }}>
+            At least 10 characters, with a letter, a number and a special character.
+          </p>
+        )}
       </div>
 
       {mode === "register" && (

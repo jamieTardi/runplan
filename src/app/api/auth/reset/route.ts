@@ -5,18 +5,22 @@ import { and, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { passwordResetTokens, sessions, users } from "@/db/schema";
 import { hashPassword } from "@/lib/auth/password";
+import { validatePassword } from "@/lib/auth/passwordPolicy";
 
 const schema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/),
-  password: z.string().min(8).max(200),
+  password: z.string().min(1).max(200),
 });
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
+
+  const policyError = validatePassword(parsed.data.password);
+  if (policyError) return NextResponse.json({ error: policyError }, { status: 400 });
 
   const tokenHash = createHash("sha256").update(parsed.data.token).digest("hex");
   const [row] = await db

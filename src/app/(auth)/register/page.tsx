@@ -1,4 +1,6 @@
 import { AuthForm } from "@/components/auth/AuthForm";
+import { GoogleButton } from "@/components/auth/GoogleButton";
+import { isGoogleConfigured } from "@/lib/auth/google";
 
 export default function RegisterPage() {
   return (
@@ -7,6 +9,11 @@ export default function RegisterPage() {
       <p className="text-sm mb-5" style={{ color: "var(--muted)" }}>
         Start building goal-time training plans.
       </p>
+      {isGoogleConfigured() && (
+        <div className="mb-4">
+          <GoogleButton label="Sign up with Google" />
+        </div>
+      )}
       <AuthForm mode="register" />
     </div>
   );

@@ -23,6 +23,29 @@ export function appUrl(): string {
   return (process.env.APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 }
 
+export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
+  if (!isEmailConfigured()) {
+    console.warn("Verification email skipped — SMTP is not configured.");
+    return;
+  }
+  await transport().sendMail({
+    from: process.env.SMTP_FROM,
+    to,
+    subject: "Verify your RunPlan email",
+    text: `Welcome to RunPlan! Confirm this email address (link valid for 24 hours):
+
+${verifyUrl}
+
+If you didn't create a RunPlan account, ignore this email.`,
+    html: `<div style="font-family:system-ui,sans-serif;max-width:480px">
+<h2 style="color:#4f46e5">RunPlan</h2>
+<p>Welcome to RunPlan! Confirm this email address:</p>
+<p><a href="${verifyUrl}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Verify email</a></p>
+<p style="color:#6b7280;font-size:13px">The link is valid for 24 hours. If you didn't create a RunPlan account, ignore this email.</p>
+</div>`,
+  });
+}
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
   if (!isEmailConfigured()) {
     console.warn("Password reset requested but SMTP is not configured (SMTP_HOST/SMTP_FROM).");

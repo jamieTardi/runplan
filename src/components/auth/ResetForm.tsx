@@ -67,11 +67,14 @@ export function ResetForm() {
           name="password"
           type="password"
           className="input"
-          placeholder="At least 8 characters"
+          placeholder="10+ characters"
           required
-          minLength={8}
+          minLength={10}
           autoComplete="new-password"
         />
+        <p className="text-xs mt-1" style={{ color: "var(--faint)" }}>
+          At least 10 characters, with a letter, a number and a special character.
+        </p>
       </div>
       <div>
         <label className="label" htmlFor="password2">

@@ -1,6 +1,7 @@
 import {
   bigint,
   boolean,
+  primaryKey,
   date,
   index,
   integer,
@@ -20,8 +21,10 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
+  // Null for SSO-only accounts (they can add a password via the reset flow).
+  passwordHash: text("password_hash"),
   name: text("name").notNull(),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   // Display-unit preference; canonical storage is always metric.
   unitPref: text("unit_pref", { enum: ["km", "mi"] }).notNull().default("km"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -38,6 +41,37 @@ export const sessions = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+// External identity providers (Google today; extensible to more).
+export const oauthAccounts = pgTable(
+  "oauth_accounts",
+  {
+    provider: text("provider").notNull(), // e.g. "google"
+    providerUserId: text("provider_user_id").notNull(), // e.g. Google `sub`
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerUserId] }),
+    index("oauth_accounts_user_idx").on(t.userId),
+  ],
+);
+
+// Single-use tokens for signup email verification (same shape as password reset).
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("email_verification_user_idx").on(t.userId)],
 );
 
 // Single-use, short-lived tokens for the email password-reset flow. Only a

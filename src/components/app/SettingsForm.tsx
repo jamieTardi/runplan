@@ -12,11 +12,20 @@ export function SettingsForm({
   initialName,
   email,
   initialUnit,
+  emailVerified,
 }: {
   initialName: string;
   email: string;
   initialUnit: Unit;
+  emailVerified: boolean;
 }) {
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+
+  async function resendVerification() {
+    const res = await fetch("/api/auth/verify-email/resend", { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setVerifyMsg(res.ok ? "Verification email sent — check your inbox" : (data.error ?? "Couldn't send"));
+  }
   const router = useRouter();
   const [name, setName] = useState(initialName);
   const [unit, setUnit] = useState<Unit>(initialUnit);
@@ -175,9 +184,24 @@ export function SettingsForm({
 
       <section className="card p-5">
         <h2 className="font-bold mb-1">Account</h2>
-        <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
-          Signed in as {email}
+        <p className="text-sm mb-2" style={{ color: "var(--muted)" }}>
+          Signed in as {email}{" "}
+          {emailVerified ? (
+            <span style={{ color: "var(--accent)" }}>· verified ✓</span>
+          ) : (
+            <span style={{ color: "var(--danger)" }}>· not verified</span>
+          )}
         </p>
+        {!emailVerified && (
+          <div className="mb-3">
+            <button className="btn btn-ghost text-sm" onClick={resendVerification}>
+              Resend verification email
+            </button>
+            {verifyMsg && (
+              <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>{verifyMsg}</p>
+            )}
+          </div>
+        )}
         <button className="btn btn-ghost self-start" onClick={signOut} style={{ color: "var(--danger)" }}>
           <LogOut size={16} /> Sign out
         </button>
