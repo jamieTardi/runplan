@@ -12,7 +12,18 @@ This page covers the production details beyond the README quick start.
 | `CRON_SECRET` | for scheduled Garmin sync | shared secret for `POST /api/garmin/sync-all` |
 | `ALLOW_INSECURE_COOKIES=1` | only for plain-HTTP LAN deployments | drops the `Secure` cookie flag; remove behind HTTPS |
 | `APP_URL` | for password reset + passkeys | public base URL, e.g. `https://runplan.example.com` — used in reset-email links and as the WebAuthn origin/RP ID |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset emails | any SMTP provider (a Gmail app password works). Unset = the forgot-password UI still responds normally but no email is sent (logged server-side) |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | for password-reset emails | any SMTP provider. Unset = the forgot-password UI still responds normally but no email is sent (logged server-side) |
+
+A good free SMTP provider is [Resend](https://resend.com) (3k emails/month): verify your
+domain with the 3 DNS records they give you, create an API key, then
+
+```env
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=465
+SMTP_USER=resend
+SMTP_PASS=<api key>
+SMTP_FROM="RunPlan <runplan@your-domain>"
+```
 
 ## Systemd service
 
@@ -106,6 +117,15 @@ just reconnects in Settings.
   passkey in **Settings → Passkeys** (fingerprint/face/PIN on that device) and can then
   use *Sign in with a passkey* on the login page — including inside the Android app.
   Passkeys are origin-bound: they only work on the `APP_URL` domain, not via a LAN IP.
+
+  Android field notes: creation deliberately doesn't force a provider — Android shows
+  its "save passkey to…" sheet, where third-party providers (Bitwarden/Vaultwarden,
+  Android 14+, enable *Use Bitwarden for passkeys* in the app) can be chosen. If the
+  ceremony lands in an NFC "security key" reader dialog, a contactless card near the
+  phone (wallet case!) is hijacking it — move the card or toggle NFC off. A hung or
+  erroring Google Password Manager usually wants a Play services update; RunPlan retries
+  creation once with relaxed options on a bare `UnknownError`, and every prompt has a
+  Cancel and a 75s timeout so the UI can't be trapped.
 
 ## Reverse proxy / HTTPS
 
