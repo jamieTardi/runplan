@@ -12,6 +12,7 @@ import {
   type Unit,
 } from "@/lib/units";
 import { LineChart, type ChartPoint } from "./LineChart";
+import { cumulativeDistancesM, nearestIndexByDistance } from "@/lib/geo";
 import { UploadFit } from "./UploadFit";
 
 const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
@@ -33,6 +34,22 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit }) {
   const [data, setData] = useState<GarminActivityData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<[number, number] | null>(null);
+
+  const routeDistances = useMemo(
+    () => cumulativeDistancesM((data?.route ?? []) as [number, number][]),
+    [data],
+  );
+
+  function onChartHover(point: ChartPoint | null) {
+    if (!point || !data || routeDistances.length === 0) {
+      setHighlight(null);
+      return;
+    }
+    const dM = unit === "mi" ? point.x * 1609.344 : point.x * 1000;
+    const idx = nearestIndexByDistance(routeDistances, dM);
+    setHighlight(idx >= 0 ? (data.route[idx] as [number, number]) : null);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -150,7 +167,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
           ))}
       </div>
 
-      {data.route.length > 1 && <RouteMap route={data.route} />}
+      {data.route.length > 1 && <RouteMap route={data.route} highlight={highlight} />}
 
       {hrPoints.length > 1 && (
         <div>
@@ -162,6 +179,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             color="var(--danger)"
             formatX={xFormat}
             formatY={(y) => `${Math.round(y)} bpm`}
+            onHover={onChartHover}
           />
         </div>
       )}
@@ -177,6 +195,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             invertY
             formatX={xFormat}
             formatY={(y) => `${paceFmt(y)} /${unit}`}
+            onHover={onChartHover}
           />
         </div>
       )}
@@ -193,6 +212,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             height={120}
             formatX={xFormat}
             formatY={(y) => `${Math.round(y)} m`}
+            onHover={onChartHover}
           />
         </div>
       )}

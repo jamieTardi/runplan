@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Check, Flag, Mountain, Pencil, Trash2, Upload, X } from "lucide-react";
 import { distanceIn, formatDistance, formatDuration, type Unit } from "@/lib/units";
 import { LineChart, type ChartPoint } from "@/components/workout/LineChart";
+import { cumulativeDistancesM, nearestIndexByDistance } from "@/lib/geo";
 
 const RouteMap = dynamic(() => import("@/components/workout/RouteMap").then((m) => m.RouteMap), {
   ssr: false,
@@ -19,15 +20,6 @@ export interface RaceCourseVM {
   elevLossM: number | null;
   route: [number, number][];
   elevSeries: { dM: number; elevM: number }[];
-}
-
-function haversineM(aLat: number, aLon: number, bLat: number, bLon: number): number {
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLon = toRad(bLon - aLon);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * 6_371_000 * Math.asin(Math.sqrt(h));
 }
 
 function daysUntil(raceDateISO: string): number {
@@ -73,16 +65,10 @@ export function RaceCard({
   const [highlight, setHighlight] = useState<[number, number] | null>(null);
 
   // Cumulative distance along the route, so elevation-hover can find the spot.
-  const routeDistances = useMemo(() => {
-    if (!course) return [];
-    const out: number[] = [0];
-    for (let i = 1; i < course.route.length; i++) {
-      const [aLat, aLon] = course.route[i - 1];
-      const [bLat, bLon] = course.route[i];
-      out.push(out[i - 1] + haversineM(aLat, aLon, bLat, bLon));
-    }
-    return out;
-  }, [course]);
+  const routeDistances = useMemo(
+    () => cumulativeDistancesM(course?.route ?? []),
+    [course],
+  );
 
   function onElevHover(point: ChartPoint | null) {
     if (!point || !course || routeDistances.length === 0) {
@@ -90,17 +76,8 @@ export function RaceCard({
       return;
     }
     const dM = unit === "mi" ? point.x * 1609.344 : point.x * 1000;
-    // Binary search for the closest route point by cumulative distance.
-    let lo = 0;
-    let hi = routeDistances.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (routeDistances[mid] < dM) lo = mid + 1;
-      else hi = mid;
-    }
-    const idx =
-      lo > 0 && dM - routeDistances[lo - 1] < routeDistances[lo] - dM ? lo - 1 : lo;
-    setHighlight(course.route[idx]);
+    const idx = nearestIndexByDistance(routeDistances, dM);
+    setHighlight(idx >= 0 ? course.route[idx] : null);
   }
 
   async function saveName() {

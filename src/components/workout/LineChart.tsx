@@ -37,6 +37,7 @@ export function LineChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null); // point index
+  const [pinned, setPinned] = useState(false); // click/tap freezes the crosshair
   const lastNotified = useRef<number | null>(null);
 
   function notify(index: number | null) {
@@ -100,9 +101,9 @@ export function LineChart({
     return out;
   }, [domain, yTicks]);
 
-  function onMove(clientX: number) {
+  function indexAt(clientX: number): number | null {
     const el = wrapRef.current;
-    if (!el || !points.length) return;
+    if (!el || !points.length) return null;
     const rect = el.getBoundingClientRect();
     const px = clientX - rect.left;
     const targetX = domain.x0 + ((px - PAD.left) / plotW) * (domain.x1 - domain.x0);
@@ -110,6 +111,22 @@ export function LineChart({
     for (let i = 1; i < points.length; i++) {
       if (Math.abs(points[i].x - targetX) < Math.abs(points[best].x - targetX)) best = i;
     }
+    return best;
+  }
+
+  function onMove(clientX: number) {
+    if (pinned) return;
+    const best = indexAt(clientX);
+    if (best == null) return;
+    setHover(best);
+    notify(best);
+  }
+
+  // Click (or tap) pins the crosshair in place; click again to release.
+  function onClick(clientX: number) {
+    const best = indexAt(clientX);
+    if (best == null) return;
+    setPinned(!pinned);
     setHover(best);
     notify(best);
   }
@@ -120,17 +137,20 @@ export function LineChart({
   return (
     <div
       ref={wrapRef}
-      style={{ position: "relative", width: "100%" }}
       onMouseMove={(e) => onMove(e.clientX)}
       onMouseLeave={() => {
+        if (pinned) return;
         setHover(null);
         notify(null);
       }}
       onTouchMove={(e) => onMove(e.touches[0].clientX)}
       onTouchEnd={() => {
+        if (pinned) return;
         setHover(null);
         notify(null);
       }}
+      onClick={(e) => onClick(e.clientX)}
+      style={{ position: "relative", width: "100%", cursor: "crosshair" }}
     >
       <svg width={width || "100%"} height={height} style={{ display: "block" }} role="img">
         {ticks.map((t, i) => (
@@ -175,6 +195,9 @@ export function LineChart({
               strokeWidth={1}
             />
             <circle cx={sx(hp.x)} cy={sy(hp.y)} r={4} fill={color} stroke="var(--surface)" strokeWidth={2} />
+            {pinned && (
+              <circle cx={sx(hp.x)} cy={sy(hp.y)} r={8} fill="none" stroke={color} strokeWidth={1.5} opacity={0.7} />
+            )}
           </g>
         )}
       </svg>
@@ -194,6 +217,7 @@ export function LineChart({
             boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
           }}
         >
+          {pinned && <span aria-hidden>📍 </span>}
           <span style={{ color: "var(--muted)" }}>{formatX(hp.x)}</span>{" "}
           <strong>{formatY(hp.y)}</strong>
         </div>
