@@ -214,3 +214,38 @@ body {
     transform: none;
   }
 }
+
+/* --- Workout detail page ------------------------------------------------- */
+.skeleton {
+  background: var(--surface-2);
+  animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.route-map {
+  border: 1px solid var(--border);
+}
+.leaflet-container {
+  z-index: 0;
+  font: inherit;
+}
+/* Dark theme: invert OSM tiles into a muted night map. */
+[data-theme="dark"] .route-map .leaflet-tile {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.4);
+}
+[data-theme="dark"] .route-map .leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--faint);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .route-map .leaflet-tile {
+    filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.4);
+  }
+  :root:not([data-theme="light"]) .route-map .leaflet-control-attribution {
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--faint);
+  }
+}

@@ -121,6 +121,7 @@ export async function syncGarminForUser(userId: string): Promise<SyncResult | nu
         completedAt: new Date(activity.startTimeLocal.replace(" ", "T")),
         actualDistanceKm: Math.round((activity.distanceM / 1000) * 100) / 100,
         actualDurationS: Math.round(activity.durationS),
+        garminActivityId: activity.activityId,
         notes: existingNotes?.trim() ? existingNotes : `Synced from Garmin: ${activity.activityName}`,
       })
       .where(eq(workouts.id, workoutId));

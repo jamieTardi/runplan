@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   date,
   index,
@@ -138,6 +139,8 @@ export const workouts = pgTable(
     actualDistanceKm: real("actual_distance_km"),
     actualDurationS: integer("actual_duration_s"),
     notes: text("notes"),
+    // Garmin activity this workout was completed from (set by the sync).
+    garminActivityId: bigint("garmin_activity_id", { mode: "number" }),
   },
   (t) => [index("workouts_plan_idx").on(t.planId), index("workouts_week_idx").on(t.weekId)],
 );
@@ -157,6 +160,17 @@ export const garminAccounts = pgTable("garmin_accounts", {
   tokens: jsonb("tokens").notNull(),
   lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Fetched-once cache of per-activity detail (laps, HR/pace series, route),
+// so the workout page doesn't hit Garmin on every view.
+export const garminActivityCache = pgTable("garmin_activity_cache", {
+  activityId: bigint("activity_id", { mode: "number" }).primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // ---------------------------------------------------------------------------
