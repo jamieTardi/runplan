@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { oauthAccounts, users } from "@/db/schema";
 import { exchangeGoogleCode, GoogleAuthError } from "@/lib/auth/google";
+import { appUrl } from "@/lib/email";
 import { createSession, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,9 @@ export async function GET(req: Request) {
   const expectedState = jar.get(STATE_COOKIE)?.value;
   jar.delete(STATE_COOKIE);
 
+  // appUrl(), not req.url: behind the reverse proxy req.url is localhost.
   const fail = (reason: string) =>
-    NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(reason)}`, req.url));
+    NextResponse.redirect(`${appUrl()}/login?error=${encodeURIComponent(reason)}`);
 
   if (!code || !state || !expectedState || state !== expectedState) {
     return fail("Google sign-in was interrupted — try again");
@@ -75,5 +77,5 @@ export async function GET(req: Request) {
 
   const { token, expiresAt } = await createSession(userId);
   jar.set(SESSION_COOKIE, token, sessionCookieOptions(expiresAt));
-  return NextResponse.redirect(new URL("/", req.url));
+  return NextResponse.redirect(`${appUrl()}/`);
 }

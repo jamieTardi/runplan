@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { consumeEmailVerification } from "@/lib/auth/verification";
+import { appUrl } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -7,5 +8,6 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token") ?? "";
   const ok = await consumeEmailVerification(token);
-  return NextResponse.redirect(new URL(ok ? "/settings?verified=1" : "/settings?verified=0", req.url));
+  // appUrl(), not req.url: behind the reverse proxy req.url is localhost.
+  return NextResponse.redirect(`${appUrl()}/settings?verified=${ok ? "1" : "0"}`);
 }
