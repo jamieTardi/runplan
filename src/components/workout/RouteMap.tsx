@@ -28,7 +28,7 @@ export function RouteMap({
 
       map = L.map(ref.current, {
         zoomControl: true,
-        scrollWheelZoom: false, // don't hijack page scroll
+        scrollWheelZoom: true, // wheel zoom while the pointer is over the map
         attributionControl: true,
       });
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
