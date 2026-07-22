@@ -115,6 +115,11 @@ function chooseRestDays(
 function round1(n: number) {
   return Math.round(n * 10) / 10;
 }
+// Training distances are prescribed in whole km; only the race itself keeps
+// its exact distance (e.g. half marathon 21.1 km).
+function roundKm(n: number) {
+  return Math.round(n);
+}
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
@@ -139,11 +144,11 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   // 3. Fixed sessions (distance-defining).
   const longFrac =
     week.phase === "endurance" ? 0.28 : week.phase === "race_prep" ? 0.32 : 0.3;
-  const longKm = Math.min(round1(planned * longFrac), longCapKm(raceDistanceKm));
-  const mlKm = Math.min(round1(planned * 0.18), round1(longKm * 0.85), 23);
-  const qaKm = clamp(round1(planned * 0.13), 5, 18);
+  const longKm = roundKm(Math.min(planned * longFrac, longCapKm(raceDistanceKm)));
+  const mlKm = roundKm(Math.min(planned * 0.18, longKm * 0.85, 23));
+  const qaKm = clamp(roundKm(planned * 0.13), 5, 18);
   // Ultra plans stack a second long run the day before the long run (back-to-back).
-  const b2bKm = isUltra ? round1(Math.min(longKm * 0.6, planned * 0.2)) : 0;
+  const b2bKm = isUltra ? roundKm(Math.min(longKm * 0.6, planned * 0.2)) : 0;
 
   const workouts: Record<number, Omit<PlanWorkout, "dow" | "dateISO">> = {};
 
@@ -190,7 +195,7 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   const targetFlex = Math.max(0, planned - fixed);
   const sumW = flexDays.reduce((a, d) => a + d.weight, 0) || 1;
   for (const d of flexDays) {
-    const km = round1((targetFlex * d.weight) / sumW);
+    const km = roundKm((targetFlex * d.weight) / sumW);
     workouts[d.dow] =
       d.role === "recovery"
         ? recovery(easy, km)
@@ -278,7 +283,7 @@ function longRun(input: BuildWeekInput, km: number) {
   let description = "Long run";
   // Integrate marathon-pace work during race-prep and taper.
   if ((week.phase === "race_prep" || week.phase === "taper") && input.raceType === "marathon") {
-    const mpKm = Math.min(round1(km * 0.45), 16);
+    const mpKm = Math.min(roundKm(km * 0.45), 16);
     segments.push({ kind: "steady", label: `final ${mpKm} km @ marathon pace` });
     description = `Long run with ${mpKm} km @ marathon pace`;
     return {
