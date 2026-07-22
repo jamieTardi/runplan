@@ -12,6 +12,7 @@ import {
   type Unit,
 } from "@/lib/units";
 import { LineChart, type ChartPoint } from "./LineChart";
+import { UploadFit } from "./UploadFit";
 
 const RouteMap = dynamic(() => import("./RouteMap").then((m) => m.RouteMap), {
   ssr: false,
@@ -86,9 +87,13 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
 
   if (error) {
     return (
-      <section className="card p-5">
-        <h2 className="font-bold mb-2">Garmin activity</h2>
+      <section className="card p-5 flex flex-col gap-3">
+        <h2 className="font-bold">Garmin activity</h2>
         <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
+        <p className="text-sm" style={{ color: "var(--muted)" }}>
+          You can load this workout&apos;s data manually instead:
+        </p>
+        <UploadFit workoutId={workoutId} />
       </section>
     );
   }
@@ -125,14 +130,16 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
           <h2 className="font-bold">Garmin activity</h2>
           <p className="text-sm" style={{ color: "var(--muted)" }}>{data.activityName}</p>
         </div>
-        <a
-          className="btn btn-ghost text-sm shrink-0"
-          href={`https://connect.garmin.com/modern/activity/${data.activityId}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <ExternalLink size={14} /> <span className="hidden sm:inline">Garmin Connect</span>
-        </a>
+        {data.activityId > 0 && (
+          <a
+            className="btn btn-ghost text-sm shrink-0"
+            href={`https://connect.garmin.com/modern/activity/${data.activityId}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink size={14} /> <span className="hidden sm:inline">Garmin Connect</span>
+          </a>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

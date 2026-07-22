@@ -9,6 +9,7 @@ import { WORKOUT_META } from "@/lib/planMeta";
 import { formatDistance, formatDuration, formatPace, formatPaceRange } from "@/lib/units";
 import { isoDayOfWeek } from "@/lib/plan/dates";
 import { GarminPanel } from "@/components/workout/GarminPanel";
+import { UploadFit } from "@/components/workout/UploadFit";
 import type { WorkoutSegment } from "@/lib/plan/types";
 
 const DAYNAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -133,12 +134,13 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
       {w.garminActivityId ? (
         <GarminPanel workoutId={w.id} unit={unit} />
       ) : (
-        <section className="card p-5">
-          <h2 className="font-bold mb-2">Garmin activity</h2>
+        <section className="card p-5 flex flex-col gap-3">
+          <h2 className="font-bold">Garmin activity</h2>
           <p className="text-sm" style={{ color: "var(--faint)" }}>
-            No Garmin activity is linked to this session. Once a sync matches a run to it, the
-            map, heart rate, pace and laps show up here.
+            No Garmin activity is linked to this session. A sync links it automatically when it
+            matches a run — or upload the file yourself:
           </p>
+          <UploadFit workoutId={w.id} />
         </section>
       )}
     </div>

@@ -83,4 +83,8 @@ browser (for the live preview in the plan builder).
 - **FIT workout export** — download any planned session as a structured `.fit` workout
   (warm-up / reps / recoveries / cool-down with pace targets, encoded with the official
   `@garmin/fitsdk`) and copy it to your watch's `GARMIN/Workouts` folder over USB.
+- **Workout detail page** — planned vs actual plus the linked Garmin activity: route map
+  (Leaflet/OSM), heart-rate / pace / elevation charts, and a laps table. Activity detail is
+  fetched once and cached. No API? Upload the activity's `.fit` (or "Export Original"
+  `.zip`) manually and get the same page.
 - **Switchable units** (km ⇄ mi), **light/dark theme**, fully mobile-friendly.
