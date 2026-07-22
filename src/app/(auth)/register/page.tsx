@@ -2,6 +2,9 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { isGoogleConfigured } from "@/lib/auth/google";
 
+// Render per-request: the Google button depends on runtime env config.
+export const dynamic = "force-dynamic";
+
 export default function RegisterPage() {
   return (
     <div className="card p-6">
