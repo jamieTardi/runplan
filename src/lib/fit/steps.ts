@@ -68,9 +68,11 @@ interface ParsedReps {
   repM?: number;
   repS?: number;
   recoveryS: number;
+  /** Distance-based recovery in metres ("1 km easy between") — wins over recoveryS. */
+  recoveryM?: number;
 }
 
-/** "5 × 1000m @ … 2:30 jog recovery" / "2 × 15 min @ … 3 min jog …" / "3 × 1600m @ …, 90s jog". */
+/** "5 × 1000m @ … 2:30 jog recovery" / "2 × 15 min @ … 3 min jog …" / "3 × 3 km @ …, 1 km easy between". */
 function parseReps(label: string): ParsedReps | null {
   const m = label.match(/^(\d+)\s*×\s*([\d.]+)\s*(m|km|min)\b(.*)$/);
   if (!m) return null;
@@ -78,9 +80,11 @@ function parseReps(label: string): ParsedReps | null {
   const qty = Number(m[2]);
   if (!count || !qty) return null;
   const rest = m[4] ?? "";
+  const recM = rest.match(/([\d.]+)\s*km\s*(?:easy|jog)/i);
+  const recoveryM = recM ? Number(recM[1]) * 1000 : undefined;
   const recoveryS = parseRecoverySeconds(rest) ?? 120;
-  if (m[3] === "min") return { count, repS: qty * 60, recoveryS };
-  return { count, repM: m[3] === "km" ? qty * 1000 : qty, recoveryS };
+  if (m[3] === "min") return { count, repS: qty * 60, recoveryS, recoveryM };
+  return { count, repM: m[3] === "km" ? qty * 1000 : qty, recoveryS, recoveryM };
 }
 
 /** "6 × 20s strides…" → { count, seconds }. */
@@ -167,6 +171,9 @@ export function buildWorkoutSteps(w: FitWorkoutInput, zones: PaceZones): FitPlan
     const reps = parseReps(seg.label);
     if (reps && reps.count > 1) {
       const from = items.length;
+      // Reps prescribed at goal race pace target that pace alone, not the
+      // whole-session band (a long run's band stretches up to easy pace).
+      const atRacePace = /@\s*(?:marathon|race) pace/i.test(seg.label);
       items.push(
         paced(
           {
@@ -175,20 +182,28 @@ export function buildWorkoutSteps(w: FitWorkoutInput, zones: PaceZones): FitPlan
             ...(reps.repM ? { durationM: Math.round(reps.repM) } : { durationS: reps.repS }),
           },
           fast,
-          slow,
+          atRacePace ? fast : slow,
         ),
       );
-      items.push({ kind: "step", name: "Jog recovery", intensity: "recovery", durationS: reps.recoveryS });
+      items.push(
+        reps.recoveryM
+          ? paced(
+              { name: "Easy between", intensity: "recovery", durationM: Math.round(reps.recoveryM) },
+              easyFast,
+              easySlow,
+            )
+          : { kind: "step", name: "Jog recovery", intensity: "recovery", durationS: reps.recoveryS },
+      );
       items.push({ kind: "repeat", fromIndex: from, count: reps.count });
       handledMain = true;
       continue;
     }
 
-    // Long run finishing at marathon pace: easy portion, then the MP block.
-    const finalMatch = seg.label.match(/^final\s+([\d.]+)\s*km\s*@\s*marathon pace/i);
+    // Long run finishing at race pace: easy portion, then the block at pace.
+    const finalMatch = seg.label.match(/^final\s+([\d.]+)\s*km\s*@\s*(marathon|race) pace/i);
     if (finalMatch) {
-      const mpKm = Number(finalMatch[1]);
-      const easyKm = Math.max(w.distanceKm - mpKm, 0);
+      const rpKm = Number(finalMatch[1]);
+      const easyKm = Math.max(w.distanceKm - rpKm, 0);
       if (easyKm > 0) {
         items.push(
           paced(
@@ -198,11 +213,12 @@ export function buildWorkoutSteps(w: FitWorkoutInput, zones: PaceZones): FitPlan
           ),
         );
       }
+      const word = finalMatch[2].toLowerCase() === "marathon" ? "MP" : "race pace";
       items.push(
         paced(
-          { name: `Final ${mpKm} km @ MP`, intensity: "active", durationM: Math.round(mpKm * 1000) },
-          Math.round(zones.marathon),
-          Math.round(zones.marathon),
+          { name: `Final ${rpKm} km @ ${word}`, intensity: "active", durationM: Math.round(rpKm * 1000) },
+          fast,
+          fast,
         ),
       );
       handledMain = true;
@@ -223,19 +239,27 @@ export function buildWorkoutSteps(w: FitWorkoutInput, zones: PaceZones): FitPlan
       continue;
     }
 
-    // Distance-based steady block, or the goal/tune-up race itself.
+    // Distance-based steady block, or the goal/tune-up race itself. Explicit
+    // "easy" portions (a long run's lead-in/finish around race-pace intervals)
+    // run at easy pace, not the session band.
     const km = parseKm(seg.label) ?? w.distanceKm;
+    const isEasy = /\beasy\b/i.test(seg.label);
     items.push(
-      paced({ name: seg.label, intensity: "active", durationM: Math.round(km * 1000) }, fast, slow),
+      paced(
+        { name: seg.label, intensity: "active", durationM: Math.round(km * 1000) },
+        isEasy ? easyFast : fast,
+        isEasy ? easySlow : slow,
+      ),
     );
     handledMain = true;
   }
 
   // Structured work with no explicit warm-up/cool-down (e.g. the taper
   // sharpener): bracket it with lap-press easy steps so the watch flow works.
+  // Long runs carry their own easy lead-in/finish segments, so they're exempt.
   const hasWork = items.some((i) => i.kind === "repeat");
   const hasWarmup = items.some((i) => i.kind === "step" && i.intensity === "warmup");
-  if (hasWork && !hasWarmup && w.type !== "easy" && w.type !== "general_aerobic") {
+  if (hasWork && !hasWarmup && w.type !== "easy" && w.type !== "general_aerobic" && w.type !== "long") {
     items.unshift(
       paced({ name: "Warm-up (lap to end)", intensity: "warmup" }, easyFast, easySlow),
     );

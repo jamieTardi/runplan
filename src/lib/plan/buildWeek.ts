@@ -277,31 +277,95 @@ function gaStrides(z: PaceZones, q: PaceZones, km: number) {
   };
 }
 
+// Race-pace work in long runs applies from roughly half marathon up to (not
+// including) ultra distances: shorter races do their pace work in the midweek
+// quality sessions, and ultra long runs deliberately stay easy.
+const RP_LONG_MIN_RACE_KM = 20;
+
+interface RpIntervalSpec {
+  reps: number;
+  repKm: number;
+  leadKm: number;
+  tailKm: number;
+}
+
+/**
+ * Size a race-pace interval set that fits inside a long run of `km`, with a
+ * 1 km easy float between reps. `big` = the larger race-prep variant.
+ * Returns null when the long run is too short to carry interval work.
+ */
+function rpIntervals(raceKm: number, km: number, big: boolean): RpIntervalSpec | null {
+  const repKm = raceKm >= 35 ? (big ? 5 : 3) : big ? 3 : 2;
+  const targetKm = Math.min(km * (big ? 0.4 : 0.3), big ? 16 : 10);
+  let reps = Math.max(2, Math.round(targetKm / repKm));
+  const workKm = () => reps * repKm + (reps - 1);
+  while (reps > 2 && km - workKm() - 2 < 3) reps--;
+  const leadKm = km - workKm() - 2;
+  if (leadKm < 3) return null;
+  return { reps, repKm, leadKm, tailKm: 2 };
+}
+
+function rpIntervalLong(input: BuildWeekInput, km: number, spec: RpIntervalSpec, paceWord: string) {
+  const { easy, goalPaceSecPerKm } = input;
+  return {
+    type: "long" as const,
+    distanceKm: km,
+    paceLowSPerKm: Math.round(goalPaceSecPerKm),
+    paceHighSPerKm: Math.round(easy.easySlow),
+    segments: [
+      { kind: "steady" as const, label: `${spec.leadKm} km easy` },
+      {
+        kind: "reps" as const,
+        label: `${spec.reps} × ${spec.repKm} km @ ${paceWord}, 1 km easy between`,
+      },
+      { kind: "steady" as const, label: `${spec.tailKm} km easy to finish` },
+    ],
+    description: `Long run with ${spec.reps} × ${spec.repKm} km @ ${paceWord}`,
+  };
+}
+
 function longRun(input: BuildWeekInput, km: number) {
-  const { week, easy, goalPaceSecPerKm } = input;
-  const segments: WorkoutSegment[] = [];
-  let description = "Long run";
-  // Integrate marathon-pace work during race-prep and taper.
-  if ((week.phase === "race_prep" || week.phase === "taper") && input.raceType === "marathon") {
-    const mpKm = Math.min(roundKm(km * 0.45), 16);
-    segments.push({ kind: "steady", label: `final ${mpKm} km @ marathon pace` });
-    description = `Long run with ${mpKm} km @ marathon pace`;
+  const { week, easy, goalPaceSecPerKm, raceDistanceKm } = input;
+  const paceWord = input.raceType === "marathon" ? "marathon pace" : "race pace";
+  const rpEligible =
+    raceDistanceKm >= RP_LONG_MIN_RACE_KM &&
+    raceDistanceKm < ULTRA_THRESHOLD_KM &&
+    !week.isCutback;
+
+  // LT phase: alternate weeks introduce broken race-pace intervals.
+  if (rpEligible && week.phase === "lt" && week.weekIndex % 2 === 1) {
+    const spec = rpIntervals(raceDistanceKm, km, false);
+    if (spec) return rpIntervalLong(input, km, spec, paceWord);
+  }
+
+  // Race prep and taper: race-pace volume peaks — alternate a longer interval
+  // set with a continuous finish at pace (taper keeps only the continuous form).
+  if (rpEligible && (week.phase === "race_prep" || week.phase === "taper")) {
+    if (week.phase === "race_prep" && week.weekIndex % 2 === 1) {
+      const spec = rpIntervals(raceDistanceKm, km, true);
+      if (spec) return rpIntervalLong(input, km, spec, paceWord);
+    }
+    const rpKm = Math.min(roundKm(km * 0.45), 16, Math.round(raceDistanceKm * 0.5));
+    const segments: WorkoutSegment[] = [
+      { kind: "steady", label: `final ${rpKm} km @ ${paceWord}` },
+    ];
     return {
       type: "long" as const,
       distanceKm: km,
       paceLowSPerKm: Math.round(goalPaceSecPerKm),
       paceHighSPerKm: Math.round(easy.easySlow),
       segments,
-      description,
+      description: `Long run with ${rpKm} km @ ${paceWord}`,
     };
   }
+
   return {
     type: "long" as const,
     distanceKm: km,
     paceLowSPerKm: Math.round(easy.easyFast),
     paceHighSPerKm: Math.round(easy.easySlow),
     segments: null,
-    description,
+    description: "Long run",
   };
 }
 

@@ -113,6 +113,42 @@ describe("generatePlan — sub-3 high volume", () => {
     expect(withMp).toBe(true);
   });
 
+  it("introduces race-pace intervals in LT-phase long runs", () => {
+    const intervalLongs = plan.weeks
+      .filter((w) => w.phase === "lt")
+      .flatMap((w) => w.workouts)
+      .filter((d) => d.type === "long" && /×.*marathon pace/i.test(d.description));
+    expect(intervalLongs.length).toBeGreaterThanOrEqual(1);
+    // The interval long run carries structured segments the FIT export understands.
+    const segs = intervalLongs[0].segments!;
+    expect(segs.some((s) => s.kind === "reps" && /1 km easy between/.test(s.label))).toBe(true);
+    // Segment distances add back up to the full long run (reps + 1 km floats).
+    const reps = segs.find((s) => s.kind === "reps")!;
+    const [, n, rep] = reps.label.match(/^(\d+) × (\d+) km/)!;
+    const easies = segs
+      .filter((s) => s.kind === "steady")
+      .reduce((a, s) => a + Number(s.label.match(/^(\d+) km/)![1]), 0);
+    expect(easies + Number(n) * Number(rep) + (Number(n) - 1)).toBe(intervalLongs[0].distanceKm);
+  });
+
+  it("alternates interval and continuous race-pace long runs in race prep", () => {
+    const longs = plan.weeks
+      .filter((w) => w.phase === "race_prep" && !w.isCutback)
+      .flatMap((w) => w.workouts)
+      .filter((d) => d.type === "long");
+    expect(longs.some((d) => /×.*marathon pace/i.test(d.description))).toBe(true);
+    expect(longs.some((d) => /with \d+ km @ marathon pace/i.test(d.description))).toBe(true);
+  });
+
+  it("keeps cutback-week long runs easy", () => {
+    const cutbackLongs = plan.weeks
+      .filter((w) => w.isCutback)
+      .flatMap((w) => w.workouts)
+      .filter((d) => d.type === "long");
+    expect(cutbackLongs.length).toBeGreaterThan(0);
+    for (const d of cutbackLongs) expect(d.description).toBe("Long run");
+  });
+
   it("schedules at least one tune-up race", () => {
     const tuneups = plan.weeks
       .flatMap((w) => w.workouts)
@@ -164,6 +200,32 @@ describe("rest day preference", () => {
       expect(rest.length).toBe(1);
       expect(rest[0].dow).not.toBe(SUB3.longRunDow);
     }
+  });
+});
+
+describe("race-pace long-run work across race distances", () => {
+  it("half-marathon plans get race-pace long-run work", () => {
+    const plan = generatePlan({
+      ...SUB3,
+      raceType: "half",
+      goalTimeS: 88 * 60,
+      currentFitness: { mode: "race", raceType: "10k", timeS: 40 * 60 },
+    });
+    const longs = plan.weeks.flatMap((w) => w.workouts).filter((d) => d.type === "long");
+    expect(longs.some((d) => /race pace/i.test(d.description))).toBe(true);
+  });
+
+  it("short-race plans keep long runs easy", () => {
+    const plan = generatePlan({
+      ...SUB3,
+      raceType: "10k",
+      goalTimeS: 40 * 60,
+      currentFitness: { mode: "race", raceType: "5k", timeS: 19 * 60 },
+      startVolumeKm: 40,
+      peakVolumeKm: 60,
+    });
+    const longs = plan.weeks.flatMap((w) => w.workouts).filter((d) => d.type === "long");
+    expect(longs.every((d) => d.description === "Long run")).toBe(true);
   });
 });
 

@@ -120,9 +120,58 @@ describe("buildWorkoutSteps", () => {
     expect(items[0]).toMatchObject({ durationM: 18_000 });
     const mp = items[1] as FitStepPlan;
     expect(mp.durationM).toBe(12_000);
-    // MP block targets marathon pace, not the whole-session band
-    expect(mp.paceFastSPerKm!).toBeLessThanOrEqual(Math.round(zones.marathon));
-    expect(mp.paceSlowSPerKm!).toBeGreaterThanOrEqual(Math.round(zones.marathon));
+    // MP block targets the workout's goal pace, not the whole-session band
+    expect(mp.paceFastSPerKm!).toBeLessThanOrEqual(256);
+    expect(mp.paceSlowSPerKm!).toBeGreaterThanOrEqual(256);
+    expect(mp.paceSlowSPerKm!).toBeLessThan(300);
+  });
+
+  it("a long run with a race-pace finish parses the generic wording too", () => {
+    const items = buildWorkoutSteps(
+      workout({
+        type: "long",
+        distanceKm: 22,
+        paceLowSPerKm: 270,
+        paceHighSPerKm: 329,
+        segments: [{ kind: "steady", label: "final 10 km @ race pace" }],
+      }),
+      zones,
+    )!;
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ durationM: 12_000 });
+    expect(items[1]).toMatchObject({ durationM: 10_000 });
+  });
+
+  it("a long run with race-pace intervals exports lead-in, paced reps with km recovery, and finish", () => {
+    const items = buildWorkoutSteps(
+      workout({
+        type: "long",
+        distanceKm: 26,
+        paceLowSPerKm: 256,
+        paceHighSPerKm: 329,
+        segments: [
+          { kind: "steady", label: "13 km easy" },
+          { kind: "reps", label: "3 × 3 km @ marathon pace, 1 km easy between" },
+          { kind: "steady", label: "2 km easy to finish" },
+        ],
+      }),
+      zones,
+    )!;
+    // lead-in, rep, recovery, repeat, finish — no extra warm-up bracket
+    expect(items).toHaveLength(5);
+    const lead = items[0] as FitStepPlan;
+    expect(lead).toMatchObject({ durationM: 13_000 });
+    // easy portions run at easy pace, not the session band
+    expect(lead.paceFastSPerKm!).toBeGreaterThan(256);
+    const rep = items[1] as FitStepPlan;
+    expect(rep).toMatchObject({ durationM: 3_000, intensity: "active" });
+    // race-pace reps target goal pace alone, not up to easy pace
+    expect(rep.paceSlowSPerKm!).toBeLessThan(300);
+    const rec = items[2] as FitStepPlan;
+    expect(rec).toMatchObject({ intensity: "recovery", durationM: 1_000 });
+    expect(items[3]).toMatchObject({ kind: "repeat", fromIndex: 1, count: 3 });
+    expect(items[4]).toMatchObject({ durationM: 2_000 });
+    expect(steps(items).filter((s) => s.intensity === "warmup")).toHaveLength(0);
   });
 
   it("strides ride at the end of the main run", () => {
