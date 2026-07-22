@@ -20,6 +20,9 @@ importers:
       '@flow-js/garmin-connect':
         specifier: ^1.6.17
         version: 1.6.17(debug@4.4.3(supports-color@7.2.0))(supports-color@7.2.0)
+      '@garmin/fitsdk':
+        specifier: ^21.208.0
+        version: 21.208.0
       '@radix-ui/react-dialog':
         specifier: ^1.1.20
         version: 1.1.20(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -714,6 +717,9 @@ packages:
 
   '@flow-js/garmin-connect@1.6.17':
     resolution: {integrity: sha512-P+MrffO/xjlt0Gtw5Y6Ttk3Dev7iF9WaOy3Zm5HuAMAo/PhEKsBP1zCxGIhEWSZe4IESEj/fwsG2by6Mng59LQ==}
+
+  '@garmin/fitsdk@21.208.0':
+    resolution: {integrity: sha512-mEmPHyzqaS3bb8n+yaOmgmBo/0CUrsLsN5J4viAUN5Kh6+YiwdvPh5OAzb2Jgy2IaI23q7mGtNr/8WRJC1+HoA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3978,6 +3984,8 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+
+  '@garmin/fitsdk@21.208.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

@@ -20,8 +20,20 @@ export function GarminCard({
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function finishConnect(garminUserName: string | null) {
+    setConnected(true);
+    setUserName(garminUserName);
+    setEmail("");
+    setPassword("");
+    setMfaToken(null);
+    setMfaCode("");
+    setMsg({ ok: true, text: "Connected to Garmin" });
+  }
 
   async function connect() {
     setBusy(true);
@@ -37,11 +49,35 @@ export function GarminCard({
       setMsg({ ok: false, text: data.error ?? "Failed to connect to Garmin" });
       return;
     }
-    setConnected(true);
-    setUserName(data.garminUserName ?? null);
-    setEmail("");
-    setPassword("");
-    setMsg({ ok: true, text: "Connected to Garmin" });
+    if (data.mfaRequired) {
+      setMfaToken(data.mfaToken);
+      setMsg({ ok: true, text: "Garmin sent you a verification code — enter it below." });
+      return;
+    }
+    finishConnect(data.garminUserName ?? null);
+  }
+
+  async function verifyMfa() {
+    if (!mfaToken) return;
+    setBusy(true);
+    setMsg(null);
+    const res = await fetch("/api/garmin/mfa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mfaToken, code: mfaCode }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(false);
+    if (!res.ok) {
+      const expired = /expired/i.test(data.error ?? "");
+      if (expired) {
+        setMfaToken(null);
+        setMfaCode("");
+      }
+      setMsg({ ok: false, text: data.error ?? "Verification failed" });
+      return;
+    }
+    finishConnect(data.garminUserName ?? null);
   }
 
   async function syncNow() {
@@ -111,43 +147,84 @@ export function GarminCard({
             Sign in with your Garmin account to automatically tick off planned sessions from your
             watch activities.
           </p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <span className="label">Garmin email</span>
-              <input
-                className="input"
-                type="email"
-                value={email}
-                autoComplete="off"
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <span className="label">Garmin password</span>
-              <input
-                className="input"
-                type="password"
-                value={password}
-                autoComplete="off"
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="text-xs" style={{ color: "var(--faint)" }}>
-            Your password is used once to sign in to Garmin and is never stored — only the
-            resulting session tokens are kept. Accounts with two-factor authentication aren&apos;t
-            supported yet.
-          </p>
-          {msg && (
-            <p className="text-sm" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>
+          {mfaToken ? (
+            <>
+              <div>
+                <span className="label">Verification code</span>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={mfaCode}
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  onChange={(e) => setMfaCode(e.target.value)}
+                />
+              </div>
+              {msg && (
+                <p className="text-sm" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-primary"
+                  onClick={verifyMfa}
+                  disabled={busy || mfaCode.trim().length < 4}
+                >
+                  {busy ? "Verifying…" : "Verify code"}
+                </button>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setMfaToken(null);
+                    setMfaCode("");
+                    setMsg(null);
+                  }}
+                  disabled={busy}
+                >
+                  Start over
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="label">Garmin email</span>
+                  <input
+                    className="input"
+                    type="email"
+                    value={email}
+                    autoComplete="off"
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <span className="label">Garmin password</span>
+                  <input
+                    className="input"
+                    type="password"
+                    value={password}
+                    autoComplete="off"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: "var(--faint)" }}>
+                Your password is used once to sign in to Garmin and is never stored — only the
+                resulting session tokens are kept. If your account has two-factor authentication,
+                you&apos;ll be asked for the code.
+              </p>
+              {msg && (
+                <p className="text-sm" style={{ color: msg.ok ? "var(--accent)" : "var(--danger)" }}>{msg.text}</p>
+              )}
+              <button
+                className="btn btn-primary self-start"
+                onClick={connect}
+                disabled={busy || !email || !password}
+              >
+                {busy ? "Connecting…" : "Connect Garmin"}
+              </button>
+            </>
           )}
-          <button
-            className="btn btn-primary self-start"
-            onClick={connect}
-            disabled={busy || !email || !password}
-          >
-            {busy ? "Connecting…" : "Connect Garmin"}
-          </button>
         </div>
       )}
     </section>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUserForApi } from "@/lib/auth/api";
-import { GarminError, loginGarmin } from "@/lib/garmin/client";
+import { beginGarminLogin, GarminError } from "@/lib/garmin/client";
 import { deleteGarminAccount, getGarminAccount, upsertGarminAccount } from "@/lib/garmin/store";
 
 export async function GET() {
@@ -30,9 +30,12 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
   try {
-    const { garminUserName, tokens } = await loginGarmin(parsed.data.email, parsed.data.password);
-    await upsertGarminAccount(auth.user.id, garminUserName, tokens);
-    return NextResponse.json({ connected: true, garminUserName });
+    const outcome = await beginGarminLogin(parsed.data.email, parsed.data.password);
+    if (outcome.status === "mfa") {
+      return NextResponse.json({ mfaRequired: true, mfaToken: outcome.mfaToken });
+    }
+    await upsertGarminAccount(auth.user.id, outcome.garminUserName, outcome.tokens);
+    return NextResponse.json({ connected: true, garminUserName: outcome.garminUserName });
   } catch (err) {
     if (err instanceof GarminError) {
       return NextResponse.json({ error: err.message }, { status: 400 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Watch } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { WORKOUT_META } from "@/lib/planMeta";
 import { workoutTypes, type WorkoutType } from "@/db/schema";
@@ -148,13 +149,24 @@ export function EditWorkoutDialog({
           </div>
         </details>
 
-        <div className="flex gap-2 justify-end">
-          <button className="btn btn-ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </button>
-          <button className="btn btn-primary" onClick={save}>
-            Save
-          </button>
+        <div className="flex gap-2 items-center">
+          {day.type !== "rest" && (
+            <a
+              className="btn btn-ghost"
+              href={`/api/workouts/${day.id}/fit`}
+              title="Download a structured workout file for your Garmin watch (copy to GARMIN/Workouts over USB)"
+            >
+              <Watch size={16} /> <span className="hidden sm:inline">.FIT</span>
+            </a>
+          )}
+          <div className="flex gap-2 justify-end flex-1">
+            <button className="btn btn-ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={save}>
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
