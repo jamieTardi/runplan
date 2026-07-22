@@ -19,8 +19,8 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// Apply the persisted theme before paint to avoid a flash.
-const themeScript = `(function(){try{var t=localStorage.getItem('runplan-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// Apply the persisted theme and text scale before paint to avoid a flash.
+const themeScript = `(function(){try{var t=localStorage.getItem('runplan-theme');if(t)document.documentElement.setAttribute('data-theme',t);var f=parseInt(localStorage.getItem('runplan-fontscale')||'',10);if(f>=85&&f<=140)document.documentElement.style.fontSize=f+'%';}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

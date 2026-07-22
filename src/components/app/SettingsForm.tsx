@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, LogOut } from "lucide-react";
 import type { Unit } from "@/lib/units";
 import { ThemeToggle } from "./ThemeToggle";
+import { FontSizeControl } from "./FontSizeControl";
 
 export function SettingsForm({
   initialName,
@@ -107,6 +108,11 @@ export function SettingsForm({
           <span className="text-sm" style={{ color: "var(--muted)" }}>Toggle light / dark theme</span>
           <ThemeToggle />
         </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="font-bold mb-4">Accessibility</h2>
+        <FontSizeControl />
       </section>
 
       <section className="card p-5">
