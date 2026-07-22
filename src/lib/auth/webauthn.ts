@@ -36,9 +36,11 @@ export async function registrationOptions(user: User) {
       transports: p.transports ? (p.transports.split(",") as never) : undefined,
     })),
     authenticatorSelection: {
-      residentKey: "preferred", // discoverable → usernameless sign-in
-      userVerification: "preferred", // biometric/PIN where available
+      residentKey: "required", // discoverable → shows up in usernameless sign-in
+      userVerification: "required", // insist on biometric/PIN, not just presence
     },
+    // "This device's fingerprint/face", not the QR / security-key picker.
+    preferredAuthenticatorType: "localDevice",
   });
   putChallenge(`webauthn:reg:${user.id}`, options.challenge);
   return options;
@@ -70,11 +72,12 @@ export async function verifyRegistration(user: User, response: RegistrationRespo
 export async function authenticationOptions(flowId: string) {
   const options = await generateAuthenticationOptions({
     rpID: rpID(),
-    userVerification: "preferred",
+    userVerification: "required", // biometric/PIN, matching registration
     // no allowCredentials → the authenticator offers its discoverable passkeys
   });
   putChallenge(`webauthn:auth:${flowId}`, options.challenge);
-  return options;
+  // Steer straight to this device's biometric prompt, not the QR/device picker.
+  return { ...options, hints: ["client-device" as const] };
 }
 
 /** Verifies a sign-in assertion; returns the passkey row (with userId) on success. */
