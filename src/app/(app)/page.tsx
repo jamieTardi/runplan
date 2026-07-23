@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, CalendarPlus, Sparkles } from "lucide-react";
 import { requireUser } from "@/lib/auth";
+import { isPro } from "@/lib/billing/plan";
+import { getGarminAccount } from "@/lib/garmin/store";
 import { getPlanDetail, getUserPlans } from "@/lib/plan/queries";
 import { addDaysISO, diffDaysISO, isoDayOfWeek, todayISO } from "@/lib/plan/dates";
 import { creditedKm } from "@/lib/plan/viewModel";
@@ -9,6 +11,7 @@ import { PHASE_META, raceLabel, softBg } from "@/lib/planMeta";
 import { distanceIn, formatDuration } from "@/lib/units";
 import { VolumeChart } from "@/components/plan/VolumeChart";
 import { ThisWeek } from "@/components/plan/ThisWeek";
+import { GarminAutoSync } from "@/components/app/GarminAutoSync";
 
 export default async function DashboardPage() {
   const user = await requireUser();
@@ -41,6 +44,7 @@ export default async function DashboardPage() {
   const active = plans.find((p) => p.status === "active") ?? plans[0];
   const detail = await getPlanDetail(user.id, active.id);
   const today = todayISO();
+  const garminConnected = isPro(user) && !!(await getGarminAccount(user.id));
 
   // Current training week (falls back to first/last).
   const currentWeek =
@@ -55,6 +59,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      {garminConnected && <GarminAutoSync />}
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold">Hi {first} 👋</h1>
         <Link href="/plans/new" className="btn btn-primary">

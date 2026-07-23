@@ -10,6 +10,14 @@ export function useWorkouts(initial: DayVM[]) {
   const router = useRouter();
   const [days, setDays] = useState<DayVM[]>(initial);
 
+  // Adopt fresh server data when a router.refresh() re-serialises props
+  // (background Garmin sync, failed-patch recovery).
+  const [prevInitial, setPrevInitial] = useState(initial);
+  if (prevInitial !== initial) {
+    setPrevInitial(initial);
+    setDays(initial);
+  }
+
   async function patch(id: string, p: WorkoutPatch) {
     setDays((prev) => prev.map((d) => (d.id === id ? { ...d, ...(p as Partial<DayVM>) } : d)));
     try {
