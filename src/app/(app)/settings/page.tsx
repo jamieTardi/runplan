@@ -3,6 +3,7 @@ import { getGarminAccount } from "@/lib/garmin/store";
 import { SettingsForm } from "@/components/app/SettingsForm";
 import { GarminCard } from "@/components/app/GarminCard";
 import { BillingCard } from "@/components/app/BillingCard";
+import { ChangelogCard } from "@/components/app/ChangelogCard";
 import { isStripeConfigured } from "@/lib/billing/stripe";
 
 export default async function SettingsPage({
@@ -45,6 +46,7 @@ export default async function SettingsPage({
           initialUnit={user.unitPref}
           emailVerified={!!user.emailVerifiedAt}
         />
+        <ChangelogCard />
       </div>
     </div>
   );
