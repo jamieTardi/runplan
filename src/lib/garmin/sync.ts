@@ -98,6 +98,7 @@ export async function syncGarminForUser(userId: string): Promise<SyncResult | nu
         eq(plans.userId, userId),
         eq(plans.status, "active"),
         eq(workouts.completed, false),
+        eq(workouts.missed, false),
         gte(workouts.date, sinceISO),
         lte(workouts.date, today),
       ),

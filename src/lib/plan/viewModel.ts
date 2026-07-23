@@ -12,6 +12,7 @@ export interface DayVM {
   segments: WorkoutSegment[] | null;
   description: string;
   completed: boolean;
+  missed: boolean;
   actualDistanceKm: number | null;
   actualDurationS: number | null;
   notes: string | null;

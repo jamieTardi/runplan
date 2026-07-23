@@ -15,6 +15,16 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-23",
+    title: "Missed training & safe comeback",
+    tag: "New",
+    items: [
+      "Life happens: mark a day — or weeks — of training as missed (injury or life) from the plan page.",
+      "RunPlan rebuilds the rest of your plan around the break: you resume at a reduced volume, hard sessions pause while you ease back in, and weekly load builds up gradually so you don't get injured coming back.",
+      "Missed sessions no longer count against your progress, and Garmin won't try to match runs to them.",
+    ],
+  },
+  {
+    date: "2026-07-23",
     title: "Changelog",
     tag: "New",
     items: [

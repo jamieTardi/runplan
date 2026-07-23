@@ -16,6 +16,7 @@ import {
 
 export interface WorkoutPatch {
   completed?: boolean;
+  missed?: boolean;
   actualDistanceKm?: number | null;
   actualDurationS?: number | null;
   notes?: string | null;
@@ -41,6 +42,7 @@ export function EditWorkoutDialog({
   const toKm = (v: number) => (unit === "mi" ? v * KM_PER_MI : v);
 
   const [completed, setCompleted] = useState(day.completed);
+  const [missed, setMissed] = useState(day.missed);
   const [actualDist, setActualDist] = useState(
     day.actualDistanceKm != null ? String(+fromKm(day.actualDistanceKm).toFixed(2)) : "",
   );
@@ -69,6 +71,7 @@ export function EditWorkoutDialog({
 
   function save() {
     const patch: WorkoutPatch = { completed };
+    patch.missed = completed ? false : missed;
     patch.type = type;
     const pd = parseFloat(plannedDist);
     if (!Number.isNaN(pd)) patch.distanceKm = toKm(pd);
@@ -103,6 +106,24 @@ export function EditWorkoutDialog({
           />
           <span className="font-semibold text-sm">Mark this session complete</span>
         </label>
+
+        {!completed && (
+          <label
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
+            style={{ background: "var(--surface-2)" }}
+          >
+            <input
+              type="checkbox"
+              checked={missed}
+              onChange={(e) => setMissed(e.target.checked)}
+              className="h-5 w-5 accent-[var(--accent)]"
+            />
+            <span className="text-sm">
+              <span className="font-semibold">I missed this session</span>{" "}
+              <span style={{ color: "var(--muted)" }}>(won’t count against your progress)</span>
+            </span>
+          </label>
+        )}
 
         {completed && (
           <div className="grid grid-cols-2 gap-3">

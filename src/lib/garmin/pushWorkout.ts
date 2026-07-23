@@ -122,3 +122,27 @@ export async function sendPlannedWorkoutToGarmin(
   await db.update(workouts).set({ garminWorkoutId }).where(eq(workouts.id, w.id));
   return garminWorkoutId;
 }
+
+/**
+ * Best-effort removal of previously sent Garmin Connect workouts (e.g. when a
+ * plan rebuild replaces the sessions they were created from). Deleting a
+ * workout also removes its calendar schedule. Never throws — a stale entry in
+ * Garmin is not worth failing a rebuild for.
+ */
+export async function deleteGarminWorkoutsBestEffort(
+  userId: string,
+  garminWorkoutIds: number[],
+): Promise<void> {
+  if (garminWorkoutIds.length === 0) return;
+  try {
+    const account = await getGarminAccount(userId);
+    if (!account) return;
+    const client = clientFromTokens(account.tokens as Parameters<typeof clientFromTokens>[0]);
+    for (const id of garminWorkoutIds) {
+      await client.client.delete(`${GC_API}/workout-service/workout/${id}`).catch(() => undefined);
+    }
+    await saveGarminTokens(userId, client.exportToken()).catch(() => undefined);
+  } catch {
+    // Best-effort by design.
+  }
+}
