@@ -63,6 +63,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         segments: (d.segments as WorkoutSegment[] | null) ?? null,
         description: d.description,
         completed: d.completed,
+        missed: d.missed,
         actualDistanceKm: d.actualDistanceKm,
         actualDurationS: d.actualDurationS,
         notes: d.notes,

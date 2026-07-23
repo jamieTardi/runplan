@@ -7,6 +7,7 @@ import { WORKOUT_META } from "@/lib/planMeta";
 import { workoutTypes, type WorkoutType } from "@/db/schema";
 import type { DayVM } from "@/lib/plan/viewModel";
 import { fmtDayDate } from "./DayCard";
+import { todayISO } from "@/lib/plan/dates";
 import {
   KM_PER_MI,
   formatDuration,
@@ -16,6 +17,7 @@ import {
 
 export interface WorkoutPatch {
   completed?: boolean;
+  missed?: boolean;
   actualDistanceKm?: number | null;
   actualDurationS?: number | null;
   notes?: string | null;
@@ -41,6 +43,7 @@ export function EditWorkoutDialog({
   const toKm = (v: number) => (unit === "mi" ? v * KM_PER_MI : v);
 
   const [completed, setCompleted] = useState(day.completed);
+  const [missed, setMissed] = useState(day.missed);
   const [actualDist, setActualDist] = useState(
     day.actualDistanceKm != null ? String(+fromKm(day.actualDistanceKm).toFixed(2)) : "",
   );
@@ -69,6 +72,7 @@ export function EditWorkoutDialog({
 
   function save() {
     const patch: WorkoutPatch = { completed };
+    patch.missed = completed ? false : missed;
     patch.type = type;
     const pd = parseFloat(plannedDist);
     if (!Number.isNaN(pd)) patch.distanceKm = toKm(pd);
@@ -103,6 +107,24 @@ export function EditWorkoutDialog({
           />
           <span className="font-semibold text-sm">Mark this session complete</span>
         </label>
+
+        {!completed && day.date <= todayISO() && (
+          <label
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
+            style={{ background: "var(--surface-2)" }}
+          >
+            <input
+              type="checkbox"
+              checked={missed}
+              onChange={(e) => setMissed(e.target.checked)}
+              className="h-5 w-5 accent-[var(--accent)]"
+            />
+            <span className="text-sm">
+              <span className="font-semibold">I missed this session</span>{" "}
+              <span style={{ color: "var(--muted)" }}>(won’t count against your progress)</span>
+            </span>
+          </label>
+        )}
 
         {completed && (
           <div className="grid grid-cols-2 gap-3">
@@ -165,7 +187,20 @@ export function EditWorkoutDialog({
           </div>
         </details>
 
-        <div className="flex gap-2 items-center">
+        {garminState === "sent" && (
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Scheduled in Garmin Connect — it will appear on your watch after its next sync.
+          </p>
+        )}
+        {garminError && (
+          <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>
+            {garminError}
+          </p>
+        )}
+        <div
+          className="flex gap-2 items-center flex-wrap sticky bottom-0 -mx-5 px-5 py-3 -mb-5"
+          style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}
+        >
           {day.type !== "rest" && (
             <>
               <a className="btn btn-ghost" href={`/workouts/${day.id}`} title="Full workout detail with Garmin data">
@@ -200,16 +235,6 @@ export function EditWorkoutDialog({
             </button>
           </div>
         </div>
-        {garminState === "sent" && (
-          <p className="text-xs" style={{ color: "var(--muted)" }}>
-            Scheduled in Garmin Connect — it will appear on your watch after its next sync.
-          </p>
-        )}
-        {garminError && (
-          <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>
-            {garminError}
-          </p>
-        )}
       </div>
     </Modal>
   );

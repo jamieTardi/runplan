@@ -8,6 +8,7 @@ import { sendPlannedWorkoutToGarmin } from "@/lib/garmin/pushWorkout";
 
 const patchSchema = z.object({
   completed: z.boolean().optional(),
+  missed: z.boolean().optional(),
   actualDistanceKm: z.number().min(0).max(200).nullable().optional(),
   actualDurationS: z.number().int().min(0).max(86_400).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
@@ -43,6 +44,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const update: Partial<typeof workouts.$inferInsert> = { ...data };
   if (data.completed !== undefined) {
     update.completedAt = data.completed ? new Date() : null;
+    if (data.completed) update.missed = false;
+  }
+  if (data.missed) {
+    update.completed = false;
+    update.completedAt = null;
   }
 
   const [updated] = await db

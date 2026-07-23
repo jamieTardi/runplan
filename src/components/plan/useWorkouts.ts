@@ -63,6 +63,6 @@ export function useWorkouts(initial: DayVM[]) {
     days,
     patch,
     swap,
-    toggle: (id: string, next: boolean) => patch(id, { completed: next }),
+    toggle: (id: string, next: boolean) => patch(id, next ? { completed: true, missed: false } : { completed: next }),
   };
 }

@@ -78,6 +78,13 @@
       "when": 1784742247279,
       "tag": "0010_bent_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784819285581,
+      "tag": "0011_bent_avengers",
+      "breakpoints": true
     }
   ]
 }

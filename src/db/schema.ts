@@ -218,6 +218,9 @@ export const workouts = pgTable(
     description: text("description").notNull().default(""),
     completed: boolean("completed").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    // Marked missed by the user (injury / life). Only ever set explicitly;
+    // mutually exclusive with completed.
+    missed: boolean("missed").notNull().default(false),
     actualDistanceKm: real("actual_distance_km"),
     actualDurationS: integer("actual_duration_s"),
     notes: text("notes"),

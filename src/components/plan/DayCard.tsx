@@ -51,7 +51,7 @@ export function DayCard({
         background: day.completed ? softBg(meta.color, 10) : "var(--surface)",
         border: `1px solid ${isToday ? "var(--primary)" : "var(--border)"}`,
         borderLeft: `4px solid ${meta.color}`,
-        opacity: isRest ? 0.7 : 1,
+        opacity: isRest ? 0.7 : day.missed && !day.completed ? 0.65 : 1,
       }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -63,6 +63,11 @@ export function DayCard({
             {isToday && (
               <span className="text-[9px] font-bold px-1 rounded" style={{ background: "var(--primary)", color: "var(--primary-fg)" }}>
                 TODAY
+              </span>
+            )}
+            {day.missed && !day.completed && (
+              <span className="text-[9px] font-bold px-1 rounded" style={{ background: softBg("#f59e0b", 18), color: "#f59e0b" }}>
+                MISSED
               </span>
             )}
           </div>

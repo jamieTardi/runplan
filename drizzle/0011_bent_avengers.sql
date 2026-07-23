@@ -1,0 +1,1 @@
+ALTER TABLE "workouts" ADD COLUMN "missed" boolean DEFAULT false NOT NULL;

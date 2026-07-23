@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, ChevronDown, Download, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, ChevronDown, Download, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -11,14 +11,24 @@ import { creditedKm, type PlanVM, type WeekVM } from "@/lib/plan/viewModel";
 import { distanceIn, formatDuration, formatPace, formatPaceRange, type Unit } from "@/lib/units";
 import { EditWorkoutDialog, type WorkoutPatch } from "./EditWorkoutDialog";
 import { EditPlanDialog } from "./EditPlanDialog";
+import { GapDialog } from "./GapDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
 
 export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) {
   const router = useRouter();
   const [weeks, setWeeks] = useState<WeekVM[]>(initial.weeks);
+
+  // Adopt fresh server data when a router.refresh() re-serialises props
+  // (gap rebuild, background Garmin sync, failed-patch recovery).
+  const [prevWeeks, setPrevWeeks] = useState(initial.weeks);
+  if (prevWeeks !== initial.weeks) {
+    setPrevWeeks(initial.weeks);
+    setWeeks(initial.weeks);
+  }
   const [editId, setEditId] = useState<string | null>(null);
   const [editPlanOpen, setEditPlanOpen] = useState(false);
+  const [gapOpen, setGapOpen] = useState(false);
   const today = todayISO();
 
   const currentWeekIdx = useMemo(() => {
@@ -58,7 +68,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   }
 
   function toggle(id: string, next: boolean) {
-    patchWorkout(id, { completed: next });
+    patchWorkout(id, next ? { completed: true, missed: false } : { completed: next });
   }
 
   async function swap(aId: string, bId: string) {
@@ -101,6 +111,8 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   // --- derived -------------------------------------------------------------
   const allDays = weeks.flatMap((w) => w.workouts);
   const runDays = allDays.filter((d) => d.type !== "rest");
+  const missedCount = runDays.filter((d) => d.missed && !d.completed).length;
+  const activeRuns = runDays.length - missedCount;
   const doneCount = runDays.filter((d) => d.completed).length;
   const totalKm = allDays.reduce((a, d) => a + d.distanceKm, 0);
   const doneKm = allDays.reduce((a, d) => a + creditedKm(d), 0);
@@ -134,6 +146,9 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
             <button className="btn btn-ghost" onClick={() => setEditPlanOpen(true)}>
               <CalendarClock size={16} /> <span className="hidden sm:inline">Edit plan</span>
             </button>
+            <button className="btn btn-ghost" onClick={() => setGapOpen(true)}>
+              <CalendarOff size={16} /> <span className="hidden sm:inline">Life happens</span>
+            </button>
             <a className="btn btn-ghost" href={`/api/plans/${initial.id}/pdf`}>
               <Download size={16} /> <span className="hidden sm:inline">PDF</span>
             </a>
@@ -146,7 +161,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         {/* stat row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
           <Stat label="Race day" value={daysToRace >= 0 ? `${daysToRace}d` : "done"} sub={`${Math.max(0, Math.round(daysToRace / 7))} weeks`} />
-          <Stat label="Progress" value={`${runDays.length ? Math.round((doneCount / runDays.length) * 100) : 0}%`} sub={`${doneCount}/${runDays.length} runs`} />
+          <Stat label="Progress" value={`${activeRuns ? Math.round((doneCount / activeRuns) * 100) : 0}%`} sub={`${doneCount}/${activeRuns} runs${missedCount ? ` · ${missedCount} missed` : ""}`} />
           <Stat label="Volume done" value={`${distanceIn(doneKm, unit).toFixed(0)}`} sub={`of ${distanceIn(totalKm, unit).toFixed(0)} ${unit}`} />
           <Stat label="VDOT" value={initial.goalVdot.toFixed(1)} sub={`from ${initial.currentVdot.toFixed(1)}`} />
         </div>
@@ -221,6 +236,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
           onSave={(patch) => patchWorkout(editDay.id, patch)}
         />
       )}
+      <GapDialog planId={initial.id} unit={unit} open={gapOpen} onOpenChange={setGapOpen} />
       <EditPlanDialog
         planId={initial.id}
         unit={unit}
@@ -261,7 +277,7 @@ function WeekBlock({
 }) {
   const phase = PHASE_META[week.phase];
   const done = week.workouts.reduce((a, d) => a + creditedKm(d), 0);
-  const runDays = week.workouts.filter((d) => d.type !== "rest");
+  const runDays = week.workouts.filter((d) => d.type !== "rest" && !(d.missed && !d.completed));
   const doneRuns = runDays.filter((d) => d.completed).length;
   const pct = runDays.length ? Math.round((doneRuns / runDays.length) * 100) : 0;
 
