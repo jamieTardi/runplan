@@ -170,6 +170,8 @@ export const plans = pgTable(
     goalVdot: real("goal_vdot").notNull(),
     currentVdot: real("current_vdot").notNull(),
     includeTuneups: boolean("include_tuneups").notNull().default(true),
+    // High-volume plans: split long easy days into AM + short PM recovery runs.
+    allowDoubles: boolean("allow_doubles").notNull().default(false),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),
@@ -209,6 +211,8 @@ export const workouts = pgTable(
       .references(() => weeks.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
     dow: integer("dow").notNull(), // 1 = Mon … 7 = Sun
+    // Double-run days: "am" (default, also singles) or "pm" (short second run).
+    session: text("session", { enum: ["am", "pm"] }).notNull().default("am"),
     type: text("type", { enum: workoutTypes }).notNull(),
     distanceKm: real("distance_km").notNull().default(0),
     paceLowSPerKm: integer("pace_low_s_per_km"),

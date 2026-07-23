@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
@@ -7,7 +7,8 @@ import { getCurrentUser } from "@/lib/auth";
 
 const schema = z.object({ aId: z.string().uuid(), bId: z.string().uuid() });
 
-/** Swap the calendar slot (date + weekday) of two workouts within the same week. */
+/** Swap the calendar slot (date + weekday) of two days within the same week — all
+ * sessions on each day (AM + PM of a double day) move together. */
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,9 +42,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Can only rearrange within the same week" }, { status: 400 });
   }
 
+  // Resolve each day's rows up front — updating by dow twice would re-match
+  // the rows the first update just moved.
+  const dayRows = await db
+    .select({ id: workouts.id, dow: workouts.dow })
+    .from(workouts)
+    .where(and(eq(workouts.weekId, a.weekId), inArray(workouts.dow, [a.dow, b.dow])));
+  const dayA = dayRows.filter((r) => r.dow === a.dow).map((r) => r.id);
+  const dayB = dayRows.filter((r) => r.dow === b.dow).map((r) => r.id);
+
   await db.transaction(async (tx) => {
-    await tx.update(workouts).set({ date: b.date, dow: b.dow }).where(eq(workouts.id, aId));
-    await tx.update(workouts).set({ date: a.date, dow: a.dow }).where(eq(workouts.id, bId));
+    await tx.update(workouts).set({ date: b.date, dow: b.dow }).where(inArray(workouts.id, dayA));
+    await tx.update(workouts).set({ date: a.date, dow: a.dow }).where(inArray(workouts.id, dayB));
   });
 
   return NextResponse.json({ ok: true });

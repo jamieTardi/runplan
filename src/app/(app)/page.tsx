@@ -121,6 +121,7 @@ export default async function DashboardPage() {
           <ThisWeek
             unit={unit}
             initialDays={currentWeek.workouts.map((d) => ({
+              session: d.session,
               id: d.id,
               date: d.date,
               dow: d.dow,

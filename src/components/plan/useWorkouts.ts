@@ -39,13 +39,13 @@ export function useWorkouts(initial: DayVM[]) {
       if (!a || !b) return prev;
       return prev
         .map((d) =>
-          d.id === aId
+          d.dow === a.dow
             ? { ...d, date: b.date, dow: b.dow }
-            : d.id === bId
+            : d.dow === b.dow
               ? { ...d, date: a.date, dow: a.dow }
               : d,
         )
-        .sort((x, y) => x.dow - y.dow);
+        .sort((x, y) => x.dow - y.dow || (x.session === y.session ? 0 : x.session === "am" ? -1 : 1));
     });
     try {
       const res = await fetch("/api/workouts/swap", {

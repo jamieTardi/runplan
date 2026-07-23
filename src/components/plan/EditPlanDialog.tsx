@@ -14,6 +14,7 @@ export interface PlanSettings {
   longRunDow: number;
   restDow: number | null;
   peakVolumeKm: number;
+  allowDoubles: boolean;
 }
 
 export function EditPlanDialog({
@@ -39,6 +40,7 @@ export function EditPlanDialog({
   const [longRunDow, setLongRunDow] = useState(current.longRunDow);
   const [restDow, setRestDow] = useState<number | null>(current.restDow);
   const [peak, setPeak] = useState(String(+fromKm(current.peakVolumeKm).toFixed(1)));
+  const [allowDoubles, setAllowDoubles] = useState(current.allowDoubles);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,6 +63,7 @@ export function EditPlanDialog({
           longRunDow,
           restDow: daysPerWeek === 7 ? null : restDow,
           peakVolumeKm: Number.isFinite(peakKm) ? peakKm : undefined,
+          allowDoubles,
         }),
       });
       if (!res.ok) {
@@ -145,6 +148,14 @@ export function EditPlanDialog({
           <span className="label">Target peak volume ({distLabel})</span>
           <input type="number" className="input" value={peak} min={0} onChange={(e) => setPeak(e.target.value)} />
         </div>
+
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" checked={allowDoubles} onChange={(e) => setAllowDoubles(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+          <span className="text-sm">
+            Double run days on high-volume weeks{" "}
+            <span style={{ color: "var(--faint)" }}>(AM run + short PM shakeout)</span>
+          </span>
+        </label>
 
         {error && <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>}
         <div className="flex gap-2 justify-end">

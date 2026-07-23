@@ -15,6 +15,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-23",
+    title: "Double run days",
+    tag: "New",
+    items: [
+      "High-volume plans can now schedule doubles: turn on \u201cdouble run days\u201d when creating or editing a plan and long easy days split into a main AM run plus a short PM shakeout (max twice a week).",
+      "Doubles follow sensible rules \u2014 never the long run, quality days or the day before your long run, and cutback, taper and race weeks stay single runs.",
+    ],
+  },
+  {
+    date: "2026-07-23",
     title: "Missed training & safe comeback",
     tag: "New",
     items: [

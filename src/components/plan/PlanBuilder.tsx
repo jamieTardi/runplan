@@ -75,6 +75,7 @@ export function PlanBuilder({
   const [longRunDow, setLongRunDow] = useState(7);
   const [restDow, setRestDow] = useState<number | null>(1); // Monday by default
   const [includeTuneups, setIncludeTuneups] = useState(true);
+  const [allowDoubles, setAllowDoubles] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,6 +127,7 @@ export function PlanBuilder({
         longRunDow,
         restDow: daysPerWeek === 7 ? null : restDow,
         includeTuneups,
+        allowDoubles,
       };
       return { input: built, plan: generatePlan(built), buildError: null };
     } catch (e) {
@@ -133,7 +135,7 @@ export function PlanBuilder({
     }
   }, [
     name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
-    easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, unit, todayISO,
+    easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, allowDoubles, unit, todayISO,
   ]);
 
   async function submit() {
@@ -284,6 +286,13 @@ export function PlanBuilder({
           <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
             <input type="checkbox" checked={includeTuneups} onChange={(e) => setIncludeTuneups(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
             <span className="text-sm">Include tune-up races during race prep</span>
+          </label>
+          <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+            <input type="checkbox" checked={allowDoubles} onChange={(e) => setAllowDoubles(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+            <span className="text-sm">
+              Add double run days on high-volume weeks{" "}
+              <span style={{ color: "var(--faint)" }}>(splits long easy days into AM + a short PM shakeout — recommended from ~90 km / 55 mi weeks)</span>
+            </span>
           </label>
         </Section>
       </div>

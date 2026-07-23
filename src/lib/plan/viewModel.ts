@@ -5,6 +5,7 @@ export interface DayVM {
   id: string;
   date: string;
   dow: number;
+  session: "am" | "pm";
   type: WorkoutType;
   distanceKm: number;
   paceLowSPerKm: number | null;
@@ -40,6 +41,7 @@ export interface PlanVM {
   daysPerWeek: number;
   longRunDow: number;
   restDow: number | null;
+  allowDoubles: boolean;
   goalVdot: number;
   currentVdot: number;
   status: string;

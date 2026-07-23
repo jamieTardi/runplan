@@ -29,6 +29,7 @@ export const planInputSchema = z.object({
   longRunDow: z.number().int().min(1).max(7),
   restDow: z.number().int().min(1).max(7).nullable().optional(),
   includeTuneups: z.boolean(),
+  allowDoubles: z.boolean().default(false),
 }).superRefine((val, ctx) => {
   if (val.raceType === "custom" && !val.customDistanceKm) {
     ctx.addIssue({

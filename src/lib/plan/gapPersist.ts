@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, weeks, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
+import { applyDoubles } from "./doubles";
 import { addDaysISO, diffDaysISO } from "./dates";
 import {
   gapSeverity,
@@ -180,6 +181,12 @@ export async function applyGapAndRebuild(
       isRaceWeek: week.weekIndex === totalWeeks - 1,
       isTuneupWeek: tuneupByWeekId.get(week.id) ?? false,
     });
+    built = applyDoubles(built, {
+      enabled: plan.allowDoubles,
+      isRaceWeek: week.weekIndex === totalWeeks - 1,
+      longRunDow: plan.longRunDow,
+      easy: easyZones,
+    });
     if (i < easyWeeksLeft) {
       built = { ...built, workouts: stripQualityForReturn(built.workouts, easyZones) };
     }
@@ -191,10 +198,12 @@ export async function applyGapAndRebuild(
     // Anything already done (or already flagged missed) in a rebuilt week is
     // re-attached by date — including Garmin links and original timestamps.
     const preservedByDate = new Map(
-      week.workouts.filter((w) => w.completed || w.missed).map((w) => [iso(w.date), w]),
+      week.workouts
+        .filter((w) => w.completed || w.missed)
+        .map((w) => [`${iso(w.date)}:${w.session}`, w]),
     );
     for (const w of week.workouts) {
-      if (w.garminWorkoutId && !preservedByDate.has(iso(w.date))) {
+      if (w.garminWorkoutId && !preservedByDate.has(`${iso(w.date)}:${w.session}`)) {
         staleGarminIds.push(w.garminWorkoutId);
       }
     }
@@ -254,12 +263,13 @@ export async function applyGapAndRebuild(
         .where(eq(weeks.id, week.id));
       await tx.insert(workouts).values(
         built.workouts.map((d) => {
-          const prev = preservedByDate.get(d.dateISO);
+          const prev = preservedByDate.get(`${d.dateISO}:${d.session ?? "am"}`);
           return {
             planId,
             weekId: week.id,
             date: d.dateISO,
             dow: d.dow,
+            session: d.session ?? "am",
             type: d.type,
             distanceKm: d.distanceKm,
             paceLowSPerKm: d.paceLowSPerKm ?? null,
