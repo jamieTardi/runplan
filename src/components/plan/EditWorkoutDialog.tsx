@@ -7,6 +7,7 @@ import { WORKOUT_META } from "@/lib/planMeta";
 import { workoutTypes, type WorkoutType } from "@/db/schema";
 import type { DayVM } from "@/lib/plan/viewModel";
 import { fmtDayDate } from "./DayCard";
+import { todayISO } from "@/lib/plan/dates";
 import {
   KM_PER_MI,
   formatDuration,
@@ -107,7 +108,7 @@ export function EditWorkoutDialog({
           <span className="font-semibold text-sm">Mark this session complete</span>
         </label>
 
-        {!completed && (
+        {!completed && day.date <= todayISO() && (
           <label
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
             style={{ background: "var(--surface-2)" }}
@@ -186,7 +187,20 @@ export function EditWorkoutDialog({
           </div>
         </details>
 
-        <div className="flex gap-2 items-center">
+        {garminState === "sent" && (
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Scheduled in Garmin Connect — it will appear on your watch after its next sync.
+          </p>
+        )}
+        {garminError && (
+          <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>
+            {garminError}
+          </p>
+        )}
+        <div
+          className="flex gap-2 items-center flex-wrap sticky bottom-0 -mx-5 px-5 py-3 -mb-5"
+          style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}
+        >
           {day.type !== "rest" && (
             <>
               <a className="btn btn-ghost" href={`/workouts/${day.id}`} title="Full workout detail with Garmin data">
@@ -221,16 +235,6 @@ export function EditWorkoutDialog({
             </button>
           </div>
         </div>
-        {garminState === "sent" && (
-          <p className="text-xs" style={{ color: "var(--muted)" }}>
-            Scheduled in Garmin Connect — it will appear on your watch after its next sync.
-          </p>
-        )}
-        {garminError && (
-          <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>
-            {garminError}
-          </p>
-        )}
       </div>
     </Modal>
   );
