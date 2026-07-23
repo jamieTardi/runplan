@@ -31,6 +31,7 @@ export async function saveGeneratedPlan(
         goalVdot: gen.goalVdot,
         currentVdot: gen.currentVdot,
         includeTuneups: input.includeTuneups,
+        allowDoubles: input.allowDoubles ?? false,
         status: "active",
         paramsSnapshot: input,
       })
@@ -55,6 +56,7 @@ export async function saveGeneratedPlan(
           weekId: week.id,
           date: d.dateISO,
           dow: d.dow,
+          session: d.session ?? "am",
           type: d.type,
           distanceKm: d.distanceKm,
           paceLowSPerKm: d.paceLowSPerKm ?? null,
@@ -98,6 +100,7 @@ export async function regeneratePlan(
   const existing = await db
     .select({
       date: workouts.date,
+      session: workouts.session,
       completed: workouts.completed,
       actualDistanceKm: workouts.actualDistanceKm,
       actualDurationS: workouts.actualDurationS,
@@ -105,7 +108,9 @@ export async function regeneratePlan(
     })
     .from(workouts)
     .where(eq(workouts.planId, planId));
-  const preserved = new Map(existing.filter((w) => w.completed).map((w) => [w.date, w]));
+  const preserved = new Map(
+    existing.filter((w) => w.completed).map((w) => [`${w.date}:${w.session}`, w]),
+  );
 
   const gen = generatePlan({ ...input, todayISO: todayISO() });
 
@@ -122,6 +127,7 @@ export async function regeneratePlan(
         daysPerWeek: input.daysPerWeek,
         longRunDow: input.longRunDow,
         includeTuneups: input.includeTuneups,
+        allowDoubles: input.allowDoubles ?? false,
         goalVdot: gen.goalVdot,
         currentVdot: gen.currentVdot,
         paramsSnapshot: input,
@@ -147,12 +153,13 @@ export async function regeneratePlan(
 
       await tx.insert(workouts).values(
         w.workouts.map((d) => {
-          const done = preserved.get(d.dateISO);
+          const done = preserved.get(`${d.dateISO}:${d.session ?? "am"}`);
           return {
             planId,
             weekId: week.id,
             date: d.dateISO,
             dow: d.dow,
+            session: d.session ?? "am",
             type: d.type,
             distanceKm: d.distanceKm,
             paceLowSPerKm: d.paceLowSPerKm ?? null,

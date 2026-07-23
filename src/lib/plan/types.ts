@@ -23,6 +23,8 @@ export interface GenerateInput {
   longRunDow: number; // 1..7 (ISO)
   restDow?: number | null; // preferred rest day (ISO 1..7); null → auto
   includeTuneups: boolean;
+  /** Split long easy days into AM + short PM recovery runs (high-volume plans). */
+  allowDoubles?: boolean;
 }
 
 export interface WorkoutSegment {
@@ -32,6 +34,8 @@ export interface WorkoutSegment {
 
 export interface PlanWorkout {
   dow: number; // 1..7
+  /** "pm" marks the short second run of a double day; absent/"am" otherwise. */
+  session?: "am" | "pm";
   dateISO: string;
   type: WorkoutType;
   distanceKm: number;

@@ -29,7 +29,7 @@ export async function getPlanDetail(userId: string, planId: string) {
       weeks: {
         orderBy: (w, { asc }) => asc(w.weekIndex),
         with: {
-          workouts: { orderBy: (d, { asc }) => asc(d.dow) },
+          workouts: { orderBy: (d, { asc }) => [asc(d.dow), asc(d.session)] },
         },
       },
     },

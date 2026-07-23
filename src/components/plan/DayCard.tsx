@@ -19,6 +19,7 @@ export function DayCard({
   day,
   unit,
   isToday,
+  slotLabel,
   onToggle,
   onEdit,
   handleRef,
@@ -28,6 +29,7 @@ export function DayCard({
   day: DayVM;
   unit: Unit;
   isToday?: boolean;
+  slotLabel?: string | null;
   onToggle: () => void;
   onEdit: () => void;
   handleRef?: (el: HTMLElement | null) => void;
@@ -60,6 +62,11 @@ export function DayCard({
             <span className="text-[11px] font-semibold" style={{ color: "var(--faint)" }}>
               {fmtDayDate(day.date)}
             </span>
+            {slotLabel && (
+              <span className="text-[9px] font-bold px-1 rounded" style={{ background: "var(--surface-2)", color: "var(--muted)", border: "1px solid var(--border)" }}>
+                {slotLabel}
+              </span>
+            )}
             {isToday && (
               <span className="text-[9px] font-bold px-1 rounded" style={{ background: "var(--primary)", color: "var(--primary-fg)" }}>
                 TODAY

@@ -1,4 +1,5 @@
 import { buildWeek } from "./buildWeek";
+import { applyDoubles } from "./doubles";
 import { isoDayOfWeek } from "./dates";
 import {
   assessFeasibility,
@@ -48,7 +49,7 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       racePrepCount++;
     }
 
-    return buildWeek({
+    const built = buildWeek({
       week: wp,
       totalWeeks,
       raceType: input.raceType,
@@ -64,6 +65,12 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       goalPaceSecPerKm: goalPace,
       isRaceWeek,
       isTuneupWeek,
+    });
+    return applyDoubles(built, {
+      enabled: input.allowDoubles ?? false,
+      isRaceWeek,
+      longRunDow: input.longRunDow,
+      easy: easyZones,
     });
   });
 

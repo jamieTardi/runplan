@@ -85,6 +85,13 @@
       "when": 1784819285581,
       "tag": "0011_bent_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784822150940,
+      "tag": "0012_wet_serpent_society",
+      "breakpoints": true
     }
   ]
 }
