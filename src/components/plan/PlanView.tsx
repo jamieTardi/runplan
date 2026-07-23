@@ -18,6 +18,14 @@ import { VolumeChart } from "./VolumeChart";
 export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) {
   const router = useRouter();
   const [weeks, setWeeks] = useState<WeekVM[]>(initial.weeks);
+
+  // Adopt fresh server data when a router.refresh() re-serialises props
+  // (gap rebuild, background Garmin sync, failed-patch recovery).
+  const [prevWeeks, setPrevWeeks] = useState(initial.weeks);
+  if (prevWeeks !== initial.weeks) {
+    setPrevWeeks(initial.weeks);
+    setWeeks(initial.weeks);
+  }
   const [editId, setEditId] = useState<string | null>(null);
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);

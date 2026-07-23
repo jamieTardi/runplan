@@ -42,7 +42,6 @@ export function GapDialog({
   const [result, setResult] = useState<GapSummary | null>(null);
 
   function close(o: boolean) {
-    if (!o && result) router.refresh();
     if (!o) setResult(null);
     onOpenChange(o);
   }
@@ -64,6 +63,7 @@ export function GapDialog({
       }
       setResult(data as GapSummary);
       setBusy(false);
+      router.refresh();
     } catch {
       setError("Network error");
       setBusy(false);
