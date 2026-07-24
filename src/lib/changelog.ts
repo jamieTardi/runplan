@@ -14,6 +14,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-24",
+    title: "Race estimator",
+    tag: "New",
+    items: [
+      "Your plan page now predicts your race finish time from completed training — every run with recorded time and distance (Garmin sync or FIT upload) feeds the estimate.",
+      "Workouts and races count more than easy mileage, recent runs count more than old ones, and the card shows a realistic range, your trend, and how the prediction compares to your goal.",
+    ],
+  },
+  {
     date: "2026-07-23",
     title: "Double run days",
     tag: "New",
