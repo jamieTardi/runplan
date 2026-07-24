@@ -15,6 +15,24 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-24",
+    title: "Daily workout notifications",
+    tag: "New",
+    items: [
+      "Turn on the daily reminder in Settings → Notifications and RunPlan sends a morning push with the day's session — type, distance and pace at a glance.",
+      "Works in the Android app and in any browser where you allow notifications. Rest days stay quiet.",
+    ],
+  },
+  {
+    date: "2026-07-24",
+    title: "Free month & plan limits",
+    tag: "Improved",
+    items: [
+      "Free accounts can build plans during their first month — after that, creating new plans is a RunPlan Pro feature. Your existing plans stay fully usable: keep training, ticking off runs and viewing everything.",
+      "To keep things fast for everyone, each account can hold up to 10 plans — delete an old plan to make room for a new one.",
+    ],
+  },
+  {
+    date: "2026-07-24",
     title: "Race estimator",
     tag: "New",
     items: [

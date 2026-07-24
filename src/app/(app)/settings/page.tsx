@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { getGarminAccount } from "@/lib/garmin/store";
 import { SettingsForm } from "@/components/app/SettingsForm";
 import { GarminCard } from "@/components/app/GarminCard";
+import { NotificationsCard } from "@/components/app/NotificationsCard";
 import { BillingCard } from "@/components/app/BillingCard";
 import { ChangelogCard } from "@/components/app/ChangelogCard";
 import { isStripeConfigured } from "@/lib/billing/stripe";
@@ -30,6 +31,7 @@ export default async function SettingsPage({
           initialLastSyncAt={garmin?.lastSyncAt?.toISOString() ?? null}
           initialAutoSend={garmin?.autoSend ?? true}
         />
+        <NotificationsCard publicKey={process.env.VAPID_PUBLIC_KEY ?? null} />
         {verified === "1" && (
           <p className="text-sm rounded-lg px-3 py-2" style={{ background: "color-mix(in srgb, var(--accent) 14%, transparent)" }}>
             Email verified — thanks!
