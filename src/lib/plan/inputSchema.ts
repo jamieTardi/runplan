@@ -31,6 +31,7 @@ export const planInputSchema = z.object({
   includeTuneups: z.boolean(),
   allowDoubles: z.boolean().default(false),
   includeStrength: z.boolean().default(false),
+  experience: z.enum(["beginner"]).nullish(),
 }).superRefine((val, ctx) => {
   if (val.raceType === "custom" && !val.customDistanceKm) {
     ctx.addIssue({

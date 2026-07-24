@@ -27,6 +27,8 @@ export interface GenerateInput {
   allowDoubles?: boolean;
   /** Add two short bodyweight strength sessions a week on easy days. */
   includeStrength?: boolean;
+  /** Set by the simple builder — beginner plans get walk-break-friendly wording. */
+  experience?: "beginner" | null;
 }
 
 export interface WorkoutSegment {

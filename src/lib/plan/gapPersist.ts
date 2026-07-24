@@ -5,6 +5,7 @@ import { plans, weeks, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
 import { applyDoubles } from "./doubles";
 import { applyStrength } from "./strength";
+import { applyBeginnerNotes } from "./beginner";
 import { addDaysISO, diffDaysISO } from "./dates";
 import {
   gapSeverity,
@@ -193,6 +194,10 @@ export async function applyGapAndRebuild(
       isRaceWeek: week.weekIndex === totalWeeks - 1,
       longRunDow: plan.longRunDow,
     });
+    built = applyBeginnerNotes(
+      built,
+      (plan.paramsSnapshot as { experience?: string } | null)?.experience === "beginner",
+    );
     if (i < easyWeeksLeft) {
       built = { ...built, workouts: stripQualityForReturn(built.workouts, easyZones) };
     }

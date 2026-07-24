@@ -15,6 +15,16 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-24",
+    title: "Beginner-friendly setup",
+    tag: "New",
+    items: [
+      "New runners get a simple way in: the plan builder now opens with \"Keep it simple\" — pick your race, say how your running feels right now, and RunPlan works out the paces, volumes and goal for you.",
+      "Choose \"Finish comfortably\" and we set a realistic target from your current fitness — no need to guess a finish time. Beginner plans also remind you that walk breaks are fine on easy runs.",
+      "Seasoned runners: \"I know my numbers\" is the full setup you already have, unchanged.",
+    ],
+  },
+  {
+    date: "2026-07-24",
     title: "Strength sessions",
     tag: "New",
     items: [
