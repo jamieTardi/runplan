@@ -51,3 +51,39 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Web Push: the server sends {title, body, url, tag} as JSON.
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: "RunPlan", body: event.data.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(payload.title || "RunPlan", {
+      body: payload.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: payload.tag || "runplan-daily",
+      data: { url: payload.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      for (const win of wins) {
+        if (new URL(win.url).origin === location.origin) {
+          if (win.navigate) win.navigate(url);
+          return win.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
+});

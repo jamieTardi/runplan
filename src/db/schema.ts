@@ -281,6 +281,28 @@ export const garminActivityCache = pgTable("garmin_activity_cache", {
 });
 
 // ---------------------------------------------------------------------------
+// Web Push
+// ---------------------------------------------------------------------------
+
+// One row per device/browser that opted into the daily workout notification.
+// Endpoint is the push service URL and unique per subscription; rows are
+// pruned when the push service reports the subscription gone (404/410).
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+// ---------------------------------------------------------------------------
 // Relations
 // ---------------------------------------------------------------------------
 
@@ -315,5 +337,6 @@ export type Week = typeof weeks.$inferSelect;
 export type Workout = typeof workouts.$inferSelect;
 export type NewWorkout = typeof workouts.$inferInsert;
 export type GarminAccount = typeof garminAccounts.$inferSelect;
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
 export type RaceCourse = typeof raceCourses.$inferSelect;
 export type Passkey = typeof passkeys.$inferSelect;

@@ -15,6 +15,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-24",
+    title: "Daily workout notifications",
+    tag: "New",
+    items: [
+      "Turn on the daily reminder in Settings → Notifications and RunPlan sends a morning push with the day's session — type, distance and pace at a glance.",
+      "Works in the Android app and in any browser where you allow notifications. Rest days stay quiet.",
+    ],
+  },
+  {
+    date: "2026-07-24",
     title: "Free month & plan limits",
     tag: "Improved",
     items: [
