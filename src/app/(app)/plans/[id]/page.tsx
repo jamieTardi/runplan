@@ -6,8 +6,11 @@ import type { WorkoutSegment } from "@/lib/plan/types";
 import type { PlanInput } from "@/lib/plan/inputSchema";
 import { PlanView } from "@/components/plan/PlanView";
 import { RaceCard, type RaceCourseVM } from "@/components/plan/RaceCard";
+import { RaceEstimateCard } from "@/components/plan/RaceEstimateCard";
 import { raceLabel } from "@/lib/planMeta";
 import { raceDistanceM } from "@/lib/plan/vdot";
+import { estimateRace, type CompletedRunInput } from "@/lib/plan/raceEstimator";
+import { todayISO } from "@/lib/plan/dates";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { raceCourses } from "@/db/schema";
@@ -73,6 +76,22 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     })),
   };
 
+  // Race estimator: completed sessions with recorded actuals (Garmin/FIT).
+  const recordedRuns: CompletedRunInput[] = plan.weeks
+    .flatMap((w) => w.workouts)
+    .filter((d) => d.completed && d.actualDistanceKm != null && d.actualDurationS != null)
+    .map((d) => ({
+      dateISO: String(d.date).slice(0, 10),
+      type: d.type,
+      distanceKm: d.actualDistanceKm as number,
+      durationS: d.actualDurationS as number,
+    }));
+  const estimate = estimateRace(
+    recordedRuns,
+    raceDistanceM(plan.raceType, plan.customDistanceKm),
+    todayISO(),
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <RaceCard
@@ -84,6 +103,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         unit={user.unitPref}
         course={course}
       />
+      <RaceEstimateCard estimate={estimate} goalTimeS={plan.goalTimeS} unit={user.unitPref} />
       <PlanView plan={vm} unit={user.unitPref} />
     </div>
   );
