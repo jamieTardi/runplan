@@ -5,10 +5,18 @@ import { useRouter } from "next/navigation";
 import type { RaceType } from "@/db/schema";
 import { generatePlan } from "@/lib/plan/generatePlan";
 import type { GenerateInput } from "@/lib/plan/types";
+import { currentVdot } from "@/lib/plan/goal";
+import {
+  BEGINNER_TIERS,
+  beginnerPeakKm,
+  comfortableGoalTimeS,
+  type BeginnerTierKey,
+} from "@/lib/plan/beginner";
 import { RACE_TYPE_LABEL } from "@/lib/planMeta";
 import {
   KM_PER_MI,
   formatDistance,
+  formatDuration,
   formatPace,
   formatPaceRange,
   parseDuration,
@@ -17,6 +25,8 @@ import {
 import { VolumeChart } from "./VolumeChart";
 
 const RACE_TYPES: RaceType[] = ["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"];
+// The simple builder keeps to distances a newer runner would actually pick.
+const SIMPLE_RACE_TYPES: RaceType[] = ["5k", "10k", "half", "marathon"];
 // Fixed-length distances usable as a recent-race fitness marker.
 const RECENT_RACE_TYPES = RACE_TYPES.filter((r) => r !== "custom") as Exclude<RaceType, "custom">[];
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -29,6 +39,12 @@ const GOAL_PLACEHOLDER: Record<RaceType, string> = {
   "100k": "10:00:00",
   "100mi": "24:00:00",
   custom: "5:00:00",
+};
+const SIMPLE_GOAL_PLACEHOLDER: Partial<Record<RaceType, string>> = {
+  "5k": "35:00",
+  "10k": "1:10:00",
+  half: "2:30:00",
+  marathon: "5:00:00",
 };
 
 const VERDICT_COLOR: Record<string, string> = {
@@ -60,8 +76,9 @@ export function PlanBuilder({
   const router = useRouter();
   const distLabel = unit === "mi" ? "mi" : "km";
 
+  const [mode, setMode] = useState<"simple" | "advanced">("simple");
   const [name, setName] = useState("");
-  const [raceType, setRaceType] = useState<RaceType>("marathon");
+  const [raceType, setRaceType] = useState<RaceType>("5k");
   const [customDist, setCustomDist] = useState("");
   const [goalTime, setGoalTime] = useState("2:59:00");
   const [raceDate, setRaceDate] = useState(defaultRaceDateISO);
@@ -76,20 +93,70 @@ export function PlanBuilder({
   const [restDow, setRestDow] = useState<number | null>(1); // Monday by default
   const [includeTuneups, setIncludeTuneups] = useState(true);
   const [allowDoubles, setAllowDoubles] = useState(false);
+  const [includeStrength, setIncludeStrength] = useState(false);
+  // Simple-mode answers (own defaults: 3 days, strength on, "just finish").
+  const [tier, setTier] = useState<BeginnerTierKey>("casual");
+  const [simpleDays, setSimpleDays] = useState(3);
+  const [simpleGoalMode, setSimpleGoalMode] = useState<"finish" | "time">("finish");
+  const [simpleGoalTime, setSimpleGoalTime] = useState("");
+  const [simpleStrength, setSimpleStrength] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function switchMode(next: "simple" | "advanced") {
+    setMode(next);
+    if (next === "simple" && !SIMPLE_RACE_TYPES.includes(raceType)) setRaceType("5k");
+  }
 
   // --- Build metric input & preview ----------------------------------------
   const { input, plan, buildError } = useMemo(() => {
     try {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(raceDate)) {
+        return { input: null, plan: null, buildError: "Choose a race date" };
+      }
+
+      if (mode === "simple") {
+        const tierDef = BEGINNER_TIERS.find((t) => t.key === tier)!;
+        const currentFitness: GenerateInput["currentFitness"] = {
+          mode: "estimate",
+          weeklyKm: tierDef.weeklyKm,
+          easyPaceSecPerKm: tierDef.easyPaceSecPerKm,
+        };
+        let goalTimeS: number;
+        if (simpleGoalMode === "time") {
+          const parsed = parseDuration(simpleGoalTime);
+          if (!parsed) return { input: null, plan: null, buildError: "Enter your goal time" };
+          goalTimeS = parsed;
+        } else {
+          goalTimeS = comfortableGoalTimeS(raceType, currentVdot(currentFitness));
+        }
+        const startVolumeKm = tierDef.weeklyKm;
+        const built: GenerateInput = {
+          name: name.trim() || `${RACE_TYPE_LABEL[raceType]} finisher`,
+          raceType,
+          customDistanceKm: null,
+          goalTimeS,
+          raceDateISO: raceDate,
+          todayISO,
+          currentFitness,
+          startVolumeKm,
+          peakVolumeKm: beginnerPeakKm(raceType, startVolumeKm),
+          daysPerWeek: simpleDays,
+          longRunDow,
+          restDow: null, // auto
+          includeTuneups: false,
+          allowDoubles: false,
+          includeStrength: simpleStrength,
+          experience: "beginner",
+        };
+        return { input: built, plan: generatePlan(built), buildError: null };
+      }
+
       const goalTimeS = parseDuration(goalTime);
       const startVolumeKm = toKm(parseFloat(currentVol), unit);
       const peakVolumeKm = toKm(parseFloat(peakVol), unit);
       if (!goalTimeS || !startVolumeKm || !peakVolumeKm) {
         return { input: null, plan: null, buildError: null };
-      }
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(raceDate)) {
-        return { input: null, plan: null, buildError: "Choose a race date" };
       }
 
       let customDistanceKm: number | null = null;
@@ -128,14 +195,16 @@ export function PlanBuilder({
         restDow: daysPerWeek === 7 ? null : restDow,
         includeTuneups,
         allowDoubles,
+        includeStrength,
       };
       return { input: built, plan: generatePlan(built), buildError: null };
     } catch (e) {
       return { input: null, plan: null, buildError: (e as Error).message };
     }
   }, [
-    name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
-    easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, allowDoubles, unit, todayISO,
+    mode, name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
+    easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, allowDoubles, includeStrength,
+    tier, simpleDays, simpleGoalMode, simpleGoalTime, simpleStrength, unit, todayISO,
   ]);
 
   async function submit() {
@@ -166,135 +235,240 @@ export function PlanBuilder({
     <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
       {/* ---------------- Form ---------------- */}
       <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-2 gap-1.5">
+          <Chip active={mode === "simple"} onClick={() => switchMode("simple")}>
+            Keep it simple
+          </Chip>
+          <Chip active={mode === "advanced"} onClick={() => switchMode("advanced")}>
+            I know my numbers
+          </Chip>
+        </div>
+        {mode === "simple" && (
+          <p className="text-sm -mt-2" style={{ color: "var(--faint)" }}>
+            No paces, zones or mileage to fill in — answer a couple of questions and we&apos;ll work
+            the numbers out for you.
+          </p>
+        )}
+
         <Section n={1} title="Your goal race">
           <Field label="Plan name (optional)">
-            <input className="input" value={name} placeholder="e.g. Autumn marathon build" onChange={(e) => setName(e.target.value)} />
+            <input className="input" value={name} placeholder={mode === "simple" ? "e.g. My first 10K" : "e.g. Autumn marathon build"} onChange={(e) => setName(e.target.value)} />
           </Field>
           <Field label="Race distance">
             <div className="grid grid-cols-4 gap-1.5">
-              {RACE_TYPES.map((r) => (
+              {(mode === "simple" ? SIMPLE_RACE_TYPES : RACE_TYPES).map((r) => (
                 <Chip key={r} active={raceType === r} onClick={() => setRaceType(r)}>
                   {RACE_TYPE_LABEL[r].replace(" marathon", "").replace(" miles", " mi")}
                 </Chip>
               ))}
             </div>
           </Field>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {raceType === "custom" && (
-              <Field label={`Race distance (${distLabel})`}>
-                <input
-                  type="number"
-                  className="input"
-                  value={customDist}
-                  min={1}
-                  placeholder={unit === "mi" ? "e.g. 50" : "e.g. 80"}
-                  onChange={(e) => setCustomDist(e.target.value)}
-                />
+          {mode === "simple" ? (
+            <>
+              <Field label="What's the aim?">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <Chip active={simpleGoalMode === "finish"} onClick={() => setSimpleGoalMode("finish")}>
+                    Finish comfortably
+                  </Chip>
+                  <Chip active={simpleGoalMode === "time"} onClick={() => setSimpleGoalMode("time")}>
+                    I have a time in mind
+                  </Chip>
+                </div>
               </Field>
-            )}
-            <Field label="Goal finish time (h:mm:ss)">
-              <input className="input" value={goalTime} placeholder={GOAL_PLACEHOLDER[raceType]} onChange={(e) => setGoalTime(e.target.value)} inputMode="numeric" />
-            </Field>
-          </div>
+              {simpleGoalMode === "time" && (
+                <Field label="Goal finish time (h:mm:ss)">
+                  <input
+                    className="input"
+                    value={simpleGoalTime}
+                    placeholder={SIMPLE_GOAL_PLACEHOLDER[raceType]}
+                    onChange={(e) => setSimpleGoalTime(e.target.value)}
+                    inputMode="numeric"
+                  />
+                </Field>
+              )}
+            </>
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3">
+              {raceType === "custom" && (
+                <Field label={`Race distance (${distLabel})`}>
+                  <input
+                    type="number"
+                    className="input"
+                    value={customDist}
+                    min={1}
+                    placeholder={unit === "mi" ? "e.g. 50" : "e.g. 80"}
+                    onChange={(e) => setCustomDist(e.target.value)}
+                  />
+                </Field>
+              )}
+              <Field label="Goal finish time (h:mm:ss)">
+                <input className="input" value={goalTime} placeholder={GOAL_PLACEHOLDER[raceType]} onChange={(e) => setGoalTime(e.target.value)} inputMode="numeric" />
+              </Field>
+            </div>
+          )}
           <Field label="Race date">
             <input type="date" className="input" value={raceDate} min={todayISO} onChange={(e) => setRaceDate(e.target.value)} />
           </Field>
         </Section>
 
-        <Section n={2} title="Current fitness">
-          <div className="grid grid-cols-2 gap-1.5 mb-1">
-            <Chip active={fitnessMode === "race"} onClick={() => setFitnessMode("race")}>
-              Recent race result
-            </Chip>
-            <Chip active={fitnessMode === "estimate"} onClick={() => setFitnessMode("estimate")}>
-              Estimate from training
-            </Chip>
-          </div>
-          {fitnessMode === "race" ? (
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Field label="Distance">
-                <select className="input" value={recentRaceType} onChange={(e) => setRecentRaceType(e.target.value as Exclude<RaceType, "custom">)}>
-                  {RECENT_RACE_TYPES.map((r) => (
-                    <option key={r} value={r}>{RACE_TYPE_LABEL[r]}</option>
+        {mode === "simple" ? (
+          <>
+            <Section n={2} title="How's your running right now?">
+              <div className="flex flex-col gap-1.5">
+                {BEGINNER_TIERS.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => {
+                      setTier(t.key);
+                      setSimpleDays(t.defaultDays);
+                    }}
+                    className="btn text-left py-2.5 px-3 flex-col items-start gap-0"
+                    style={{
+                      background: tier === t.key ? "var(--primary-soft)" : "var(--surface)",
+                      border: `1px solid ${tier === t.key ? "var(--primary)" : "var(--border-strong)"}`,
+                    }}
+                  >
+                    <span className="font-semibold text-sm block" style={{ color: tier === t.key ? "var(--primary)" : "var(--foreground)" }}>
+                      {t.label}
+                    </span>
+                    <span className="text-xs block" style={{ color: "var(--faint)" }}>{t.hint}</span>
+                  </button>
+                ))}
+              </div>
+            </Section>
+
+            <Section n={3} title="Your week">
+              <Field label="Days you can run (easy days count)">
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[3, 4, 5].map((d) => (
+                    <Chip key={d} active={simpleDays === d} onClick={() => setSimpleDays(d)}>
+                      {d}
+                    </Chip>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Best day for your longest run">
+                <select className="input" value={longRunDow} onChange={(e) => setLongRunDow(Number(e.target.value))}>
+                  {DOW.map((d, i) => (
+                    <option key={d} value={i + 1}>{d}</option>
                   ))}
                 </select>
               </Field>
-              <Field label="Time (h:mm:ss)">
-                <input className="input" value={recentTime} onChange={(e) => setRecentTime(e.target.value)} inputMode="numeric" />
-              </Field>
-            </div>
-          ) : (
-            <Field label={`Typical easy pace (m:ss /${distLabel})`}>
-              <input className="input" value={easyPace} onChange={(e) => setEasyPace(e.target.value)} inputMode="numeric" />
-            </Field>
-          )}
-        </Section>
-
-        <Section n={3} title="Training volume & schedule">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Field label={`Current weekly volume (${distLabel})`}>
-              <input type="number" className="input" value={currentVol} min={0} onChange={(e) => setCurrentVol(e.target.value)} />
-            </Field>
-            <Field label={`Target peak volume (${distLabel})`}>
-              <input type="number" className="input" value={peakVol} min={0} onChange={(e) => setPeakVol(e.target.value)} />
-            </Field>
-          </div>
-          <Field label="Running days per week">
-            <div className="grid grid-cols-5 gap-1.5">
-              {[3, 4, 5, 6, 7].map((d) => (
-                <Chip key={d} active={daysPerWeek === d} onClick={() => setDaysPerWeek(d)}>
-                  {d}
+              <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+                <input type="checkbox" checked={simpleStrength} onChange={(e) => setSimpleStrength(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                <span className="text-sm">
+                  Include strength sessions{" "}
+                  <span style={{ color: "var(--faint)" }}>(two 15–20 min home routines a week — recommended for newer runners)</span>
+                </span>
+              </label>
+            </Section>
+          </>
+        ) : (
+          <>
+            <Section n={2} title="Current fitness">
+              <div className="grid grid-cols-2 gap-1.5 mb-1">
+                <Chip active={fitnessMode === "race"} onClick={() => setFitnessMode("race")}>
+                  Recent race result
                 </Chip>
-              ))}
-            </div>
-          </Field>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Field label="Long run day">
-              <select
-                className="input"
-                value={longRunDow}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setLongRunDow(v);
-                  if (restDow === v) setRestDow(null);
-                }}
-              >
-                {DOW.map((d, i) => (
-                  <option key={d} value={i + 1}>{d}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Rest day">
-              <select
-                className="input"
-                value={restDow ?? ""}
-                disabled={daysPerWeek === 7}
-                onChange={(e) => setRestDow(e.target.value === "" ? null : Number(e.target.value))}
-              >
-                <option value="">Auto</option>
-                {DOW.map((d, i) => (
-                  <option key={d} value={i + 1} disabled={i + 1 === longRunDow}>{d}</option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          {daysPerWeek === 7 && (
-            <p className="text-xs -mt-1" style={{ color: "var(--faint)" }}>
-              Running 7 days a week — no rest day.
-            </p>
-          )}
-          <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={includeTuneups} onChange={(e) => setIncludeTuneups(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
-            <span className="text-sm">Include tune-up races during race prep</span>
-          </label>
-          <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
-            <input type="checkbox" checked={allowDoubles} onChange={(e) => setAllowDoubles(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
-            <span className="text-sm">
-              Add double run days on high-volume weeks{" "}
-              <span style={{ color: "var(--faint)" }}>(splits long easy days into AM + a short PM shakeout — recommended from ~90 km / 55 mi weeks)</span>
-            </span>
-          </label>
-        </Section>
+                <Chip active={fitnessMode === "estimate"} onClick={() => setFitnessMode("estimate")}>
+                  Estimate from training
+                </Chip>
+              </div>
+              {fitnessMode === "race" ? (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Distance">
+                    <select className="input" value={recentRaceType} onChange={(e) => setRecentRaceType(e.target.value as Exclude<RaceType, "custom">)}>
+                      {RECENT_RACE_TYPES.map((r) => (
+                        <option key={r} value={r}>{RACE_TYPE_LABEL[r]}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Time (h:mm:ss)">
+                    <input className="input" value={recentTime} onChange={(e) => setRecentTime(e.target.value)} inputMode="numeric" />
+                  </Field>
+                </div>
+              ) : (
+                <Field label={`Typical easy pace (m:ss /${distLabel})`}>
+                  <input className="input" value={easyPace} onChange={(e) => setEasyPace(e.target.value)} inputMode="numeric" />
+                </Field>
+              )}
+            </Section>
+
+            <Section n={3} title="Training volume & schedule">
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Field label={`Current weekly volume (${distLabel})`}>
+                  <input type="number" className="input" value={currentVol} min={0} onChange={(e) => setCurrentVol(e.target.value)} />
+                </Field>
+                <Field label={`Target peak volume (${distLabel})`}>
+                  <input type="number" className="input" value={peakVol} min={0} onChange={(e) => setPeakVol(e.target.value)} />
+                </Field>
+              </div>
+              <Field label="Running days per week">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[3, 4, 5, 6, 7].map((d) => (
+                    <Chip key={d} active={daysPerWeek === d} onClick={() => setDaysPerWeek(d)}>
+                      {d}
+                    </Chip>
+                  ))}
+                </div>
+              </Field>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <Field label="Long run day">
+                  <select
+                    className="input"
+                    value={longRunDow}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setLongRunDow(v);
+                      if (restDow === v) setRestDow(null);
+                    }}
+                  >
+                    {DOW.map((d, i) => (
+                      <option key={d} value={i + 1}>{d}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Rest day">
+                  <select
+                    className="input"
+                    value={restDow ?? ""}
+                    disabled={daysPerWeek === 7}
+                    onChange={(e) => setRestDow(e.target.value === "" ? null : Number(e.target.value))}
+                  >
+                    <option value="">Auto</option>
+                    {DOW.map((d, i) => (
+                      <option key={d} value={i + 1} disabled={i + 1 === longRunDow}>{d}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              {daysPerWeek === 7 && (
+                <p className="text-xs -mt-1" style={{ color: "var(--faint)" }}>
+                  Running 7 days a week — no rest day.
+                </p>
+              )}
+              <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+                <input type="checkbox" checked={includeTuneups} onChange={(e) => setIncludeTuneups(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                <span className="text-sm">Include tune-up races during race prep</span>
+              </label>
+              <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+                <input type="checkbox" checked={allowDoubles} onChange={(e) => setAllowDoubles(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                <span className="text-sm">
+                  Add double run days on high-volume weeks{" "}
+                  <span style={{ color: "var(--faint)" }}>(splits long easy days into AM + a short PM shakeout — recommended from ~90 km / 55 mi weeks)</span>
+                </span>
+              </label>
+              <label className="flex items-center gap-2.5 mt-1 cursor-pointer">
+                <input type="checkbox" checked={includeStrength} onChange={(e) => setIncludeStrength(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+                <span className="text-sm">
+                  Include strength sessions{" "}
+                  <span style={{ color: "var(--faint)" }}>(two short bodyweight routines a week, 15–20 min, on easy days — one during taper)</span>
+                </span>
+              </label>
+            </Section>
+          </>
+        )}
       </div>
 
       {/* ---------------- Live preview ---------------- */}
@@ -318,6 +492,16 @@ export function PlanBuilder({
                 Peaks at {formatDistance(plan.summary.peakVolumeKm, unit, 0)}/wk
               </div>
             </div>
+
+            {mode === "simple" && simpleGoalMode === "finish" && input && (
+              <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: "var(--surface-2)" }}>
+                <span style={{ color: "var(--muted)" }}>
+                  We&apos;ll train you to finish in around{" "}
+                  <strong style={{ color: "var(--foreground)" }}>{formatDuration(input.goalTimeS)}</strong>{" "}
+                  — comfortably, not flat out.
+                </span>
+              </div>
+            )}
 
             <div
               className="rounded-lg px-3 py-2.5 text-sm"
@@ -351,7 +535,9 @@ export function PlanBuilder({
             </div>
 
             <div className="text-xs" style={{ color: "var(--faint)" }}>
-              Current VDOT {plan.currentVdot.toFixed(1)} → goal {plan.goalVdot.toFixed(1)}
+              {mode === "simple"
+                ? "Every workout comes with its target pace — no need to know these yet."
+                : `Current VDOT ${plan.currentVdot.toFixed(1)} → goal ${plan.goalVdot.toFixed(1)}`}
             </div>
           </>
         )}

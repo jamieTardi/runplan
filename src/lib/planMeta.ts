@@ -24,6 +24,7 @@ export const WORKOUT_META: Record<
   intervals: { label: "Intervals", short: "INT", color: "#ef4444" },
   strides: { label: "Strides", short: "ST", color: "#d946ef" },
   race: { label: "Race", short: "RACE", color: "#f97316" },
+  strength: { label: "Strength", short: "STR", color: "#a1a1aa" },
 };
 
 export const RACE_TYPE_LABEL: Record<RaceType, string> = {

@@ -1,5 +1,7 @@
 import { buildWeek } from "./buildWeek";
 import { applyDoubles } from "./doubles";
+import { applyStrength } from "./strength";
+import { applyBeginnerNotes } from "./beginner";
 import { isoDayOfWeek } from "./dates";
 import {
   assessFeasibility,
@@ -66,12 +68,18 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       isRaceWeek,
       isTuneupWeek,
     });
-    return applyDoubles(built, {
+    const withDoubles = applyDoubles(built, {
       enabled: input.allowDoubles ?? false,
       isRaceWeek,
       longRunDow: input.longRunDow,
       easy: easyZones,
     });
+    const withStrength = applyStrength(withDoubles, {
+      enabled: input.includeStrength ?? false,
+      isRaceWeek,
+      longRunDow: input.longRunDow,
+    });
+    return applyBeginnerNotes(withStrength, input.experience === "beginner");
   });
 
   const totalDistanceKm = weeks.reduce(

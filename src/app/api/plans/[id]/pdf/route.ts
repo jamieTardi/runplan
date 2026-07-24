@@ -110,7 +110,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     for (const d of week.workouts) {
       const wm = WORKOUT_META[d.type];
-      const isRest = d.type === "rest";
+      const isRest = d.type === "rest" || d.type === "strength"; // no distance/pace columns
       doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#0f1729").text(fmtDate(d.date), cols.day, y + 3, { width: 66, lineBreak: false });
       doc.fillColor(wm.color).font("Helvetica-Bold").fontSize(8.5).text(wm.short, cols.type, y + 3, { width: 52, lineBreak: false });
       if (!isRest) {
