@@ -51,8 +51,9 @@ export function dailyWorkoutPayload(workouts: PushWorkout[], unit: Unit): PushPa
   }
 
   // Double day: one line per session, AM first.
+  const noun = ordered.some((w) => w.type === "strength") ? "sessions" : "runs";
   return {
-    title: `Today: ${ordered.length} runs`,
+    title: `Today: ${ordered.length} ${noun}`,
     body: ordered.map((w) => `${w.session.toUpperCase()} — ${summarize(w, unit)}`).join("\n"),
     url: "/",
     tag: "runplan-daily",

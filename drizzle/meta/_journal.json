@@ -99,6 +99,13 @@
       "when": 1784885272560,
       "tag": "0013_blushing_overlord",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1784887780178,
+      "tag": "0014_normal_mantis",
+      "breakpoints": true
     }
   ]
 }

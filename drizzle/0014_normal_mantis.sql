@@ -1,0 +1,1 @@
+ALTER TABLE "plans" ADD COLUMN "include_strength" boolean DEFAULT false NOT NULL;

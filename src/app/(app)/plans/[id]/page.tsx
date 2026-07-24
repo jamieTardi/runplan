@@ -46,6 +46,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     longRunDow: plan.longRunDow,
     restDow: (plan.paramsSnapshot as PlanInput | null)?.restDow ?? null,
     allowDoubles: plan.allowDoubles,
+    includeStrength: plan.includeStrength,
     goalVdot: plan.goalVdot,
     currentVdot: plan.currentVdot,
     status: plan.status,

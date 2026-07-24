@@ -61,6 +61,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (row.ownerId !== auth.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (row.workout.type === "rest" || row.workout.type === "strength") {
+    return NextResponse.json({ error: "This session isn't a run — nothing to send to Garmin" }, { status: 400 });
+  }
 
   try {
     const garminWorkoutId = await sendPlannedWorkoutToGarmin(

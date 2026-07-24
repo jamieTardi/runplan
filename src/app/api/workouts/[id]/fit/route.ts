@@ -34,6 +34,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (row.ownerId !== auth.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const w = row.workout;
+  if (w.type === "rest" || w.type === "strength") {
+    return NextResponse.json({ error: "This session has no runnable structure to export" }, { status: 400 });
+  }
   const steps = buildWorkoutSteps(
     {
       type: w.type,

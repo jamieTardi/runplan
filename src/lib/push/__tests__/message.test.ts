@@ -39,6 +39,25 @@ describe("dailyWorkoutPayload", () => {
     expect(payload?.body).toBe("Strides after");
   });
 
+  it("strength days say sessions, not runs, and omit the distance", () => {
+    const payload = dailyWorkoutPayload(
+      [
+        workout({ session: "am", type: "easy", distanceKm: 8 }),
+        workout({
+          session: "pm",
+          type: "strength",
+          distanceKm: 0,
+          paceLowSPerKm: null,
+          paceHighSPerKm: null,
+        }),
+      ],
+      "km",
+    );
+    expect(payload?.title).toBe("Today: 2 sessions");
+    expect(payload?.body).toContain("PM — Strength");
+    expect(payload?.body).not.toContain("Strength 0");
+  });
+
   it("double days list AM before PM", () => {
     const payload = dailyWorkoutPayload(
       [

@@ -15,6 +15,7 @@ export interface PlanSettings {
   restDow: number | null;
   peakVolumeKm: number;
   allowDoubles: boolean;
+  includeStrength: boolean;
 }
 
 export function EditPlanDialog({
@@ -41,6 +42,7 @@ export function EditPlanDialog({
   const [restDow, setRestDow] = useState<number | null>(current.restDow);
   const [peak, setPeak] = useState(String(+fromKm(current.peakVolumeKm).toFixed(1)));
   const [allowDoubles, setAllowDoubles] = useState(current.allowDoubles);
+  const [includeStrength, setIncludeStrength] = useState(current.includeStrength);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,7 @@ export function EditPlanDialog({
           restDow: daysPerWeek === 7 ? null : restDow,
           peakVolumeKm: Number.isFinite(peakKm) ? peakKm : undefined,
           allowDoubles,
+          includeStrength,
         }),
       });
       if (!res.ok) {
@@ -154,6 +157,14 @@ export function EditPlanDialog({
           <span className="text-sm">
             Double run days on high-volume weeks{" "}
             <span style={{ color: "var(--faint)" }}>(AM run + short PM shakeout)</span>
+          </span>
+        </label>
+
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <input type="checkbox" checked={includeStrength} onChange={(e) => setIncludeStrength(e.target.checked)} className="h-4 w-4 accent-[var(--primary)]" />
+          <span className="text-sm">
+            Include strength sessions{" "}
+            <span style={{ color: "var(--faint)" }}>(two short bodyweight routines a week on easy days)</span>
           </span>
         </label>
 

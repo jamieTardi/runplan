@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { plans, weeks, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
 import { applyDoubles } from "./doubles";
+import { applyStrength } from "./strength";
 import { addDaysISO, diffDaysISO } from "./dates";
 import {
   gapSeverity,
@@ -186,6 +187,11 @@ export async function applyGapAndRebuild(
       isRaceWeek: week.weekIndex === totalWeeks - 1,
       longRunDow: plan.longRunDow,
       easy: easyZones,
+    });
+    built = applyStrength(built, {
+      enabled: plan.includeStrength,
+      isRaceWeek: week.weekIndex === totalWeeks - 1,
+      longRunDow: plan.longRunDow,
     });
     if (i < easyWeeksLeft) {
       built = { ...built, workouts: stripQualityForReturn(built.workouts, easyZones) };

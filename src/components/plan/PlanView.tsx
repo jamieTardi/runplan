@@ -247,6 +247,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
           restDow: initial.restDow,
           peakVolumeKm: initial.peakVolumeKm,
           allowDoubles: initial.allowDoubles,
+          includeStrength: initial.includeStrength,
         }}
         open={editPlanOpen}
         onOpenChange={setEditPlanOpen}

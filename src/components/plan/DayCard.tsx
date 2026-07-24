@@ -126,7 +126,7 @@ export function DayCard({
         </div>
       </div>
 
-      {!isRest && (
+      {!isRest && day.type !== "strength" && (
         <div className="mt-1.5">
           <span className="text-base font-extrabold tabular-nums">
             {formatDistance(day.distanceKm, unit, day.distanceKm % 1 === 0 ? 0 : 1)}

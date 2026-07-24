@@ -25,6 +25,8 @@ export interface GenerateInput {
   includeTuneups: boolean;
   /** Split long easy days into AM + short PM recovery runs (high-volume plans). */
   allowDoubles?: boolean;
+  /** Add two short bodyweight strength sessions a week on easy days. */
+  includeStrength?: boolean;
 }
 
 export interface WorkoutSegment {

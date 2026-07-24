@@ -206,24 +206,28 @@ export function EditWorkoutDialog({
               <a className="btn btn-ghost" href={`/workouts/${day.id}`} title="Full workout detail with Garmin data">
                 <BarChart3 size={16} /> <span className="hidden sm:inline">Details</span>
               </a>
-              <a
-                className="btn btn-ghost"
-                href={`/api/workouts/${day.id}/fit`}
-                title="Download a structured workout file for your Garmin watch (copy to GARMIN/Workouts over USB)"
-              >
-                <Watch size={16} /> <span className="hidden sm:inline">.FIT</span>
-              </a>
-              <button
-                className="btn btn-ghost"
-                onClick={sendToGarmin}
-                disabled={garminState === "sending" || garminState === "sent"}
-                title="Create this workout in Garmin Connect, scheduled on this date — it syncs to your watch automatically"
-              >
-                <Send size={16} />{" "}
-                <span className="hidden sm:inline">
-                  {garminState === "sending" ? "Sending…" : garminState === "sent" ? "Sent ✓" : "To Garmin"}
-                </span>
-              </button>
+              {day.type !== "strength" && (
+                <>
+                  <a
+                    className="btn btn-ghost"
+                    href={`/api/workouts/${day.id}/fit`}
+                    title="Download a structured workout file for your Garmin watch (copy to GARMIN/Workouts over USB)"
+                  >
+                    <Watch size={16} /> <span className="hidden sm:inline">.FIT</span>
+                  </a>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={sendToGarmin}
+                    disabled={garminState === "sending" || garminState === "sent"}
+                    title="Create this workout in Garmin Connect, scheduled on this date — it syncs to your watch automatically"
+                  >
+                    <Send size={16} />{" "}
+                    <span className="hidden sm:inline">
+                      {garminState === "sending" ? "Sending…" : garminState === "sent" ? "Sent ✓" : "To Garmin"}
+                    </span>
+                  </button>
+                </>
+              )}
             </>
           )}
           <div className="flex gap-2 justify-end flex-1">

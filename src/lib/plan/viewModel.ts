@@ -42,6 +42,7 @@ export interface PlanVM {
   longRunDow: number;
   restDow: number | null;
   allowDoubles: boolean;
+  includeStrength: boolean;
   goalVdot: number;
   currentVdot: number;
   status: string;

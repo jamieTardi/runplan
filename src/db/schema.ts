@@ -145,6 +145,7 @@ export const workoutTypes = [
   "intervals",
   "strides",
   "race",
+  "strength",
 ] as const;
 export type WorkoutType = (typeof workoutTypes)[number];
 
@@ -172,6 +173,8 @@ export const plans = pgTable(
     includeTuneups: boolean("include_tuneups").notNull().default(true),
     // High-volume plans: split long easy days into AM + short PM recovery runs.
     allowDoubles: boolean("allow_doubles").notNull().default(false),
+    // Add two short bodyweight strength sessions a week (never sent to Garmin).
+    includeStrength: boolean("include_strength").notNull().default(false),
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),

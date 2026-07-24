@@ -13,6 +13,7 @@ const schema = z.object({
   startVolumeKm: z.number().positive().max(300).optional(),
   includeTuneups: z.boolean().optional(),
   allowDoubles: z.boolean().optional(),
+  includeStrength: z.boolean().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

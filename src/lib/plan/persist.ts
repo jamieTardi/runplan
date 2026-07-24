@@ -32,6 +32,7 @@ export async function saveGeneratedPlan(
         currentVdot: gen.currentVdot,
         includeTuneups: input.includeTuneups,
         allowDoubles: input.allowDoubles ?? false,
+        includeStrength: input.includeStrength ?? false,
         status: "active",
         paramsSnapshot: input,
       })
@@ -128,6 +129,7 @@ export async function regeneratePlan(
         longRunDow: input.longRunDow,
         includeTuneups: input.includeTuneups,
         allowDoubles: input.allowDoubles ?? false,
+        includeStrength: input.includeStrength ?? false,
         goalVdot: gen.goalVdot,
         currentVdot: gen.currentVdot,
         paramsSnapshot: input,
