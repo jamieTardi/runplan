@@ -3,8 +3,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { FREE_ACTIVE_PLAN_LIMIT, isPro } from "@/lib/billing/plan";
-import { and } from "drizzle-orm";
+import { planCreationDenial } from "@/lib/billing/plan";
 import { planInputSchema } from "@/lib/plan/inputSchema";
 import { createPlanForUser } from "@/lib/plan/persist";
 
@@ -34,17 +33,19 @@ export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!isPro(user)) {
-    const active = await db
-      .select({ id: plans.id })
-      .from(plans)
-      .where(and(eq(plans.userId, user.id), eq(plans.status, "active")));
-    if (active.length >= FREE_ACTIVE_PLAN_LIMIT) {
-      return NextResponse.json(
-        { error: "Free accounts have one active plan — archive it first, or upgrade to RunPlan Pro for unlimited plans", upgrade: true },
-        { status: 402 },
-      );
-    }
+  const existing = await db
+    .select({ status: plans.status })
+    .from(plans)
+    .where(eq(plans.userId, user.id));
+  const denial = planCreationDenial(user, {
+    total: existing.length,
+    active: existing.filter((p) => p.status === "active").length,
+  });
+  if (denial) {
+    return NextResponse.json(
+      { error: denial.error, ...(denial.upgrade && { upgrade: true }) },
+      { status: denial.upgrade ? 402 : 403 },
+    );
   }
 
   const body = await req.json().catch(() => null);

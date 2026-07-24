@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 
 const PRO_FEATURES = [
-  "Unlimited training plans",
+  "Keep building plans after your free month (up to 10 saved)",
   "Garmin auto-sync (runs tick themselves off)",
   "Workout detail: route map, heart rate, pace, laps",
   "FIT workout export to your watch + activity upload",
