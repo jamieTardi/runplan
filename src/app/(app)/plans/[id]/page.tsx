@@ -5,6 +5,7 @@ import type { PlanVM } from "@/lib/plan/viewModel";
 import type { WorkoutSegment } from "@/lib/plan/types";
 import type { PlanInput } from "@/lib/plan/inputSchema";
 import { PlanView } from "@/components/plan/PlanView";
+import { WorkoutGuide } from "@/components/plan/WorkoutGuide";
 import { RaceCard, type RaceCourseVM } from "@/components/plan/RaceCard";
 import { RaceEstimateCard } from "@/components/plan/RaceEstimateCard";
 import { raceLabel } from "@/lib/planMeta";
@@ -106,6 +107,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       />
       <RaceEstimateCard estimate={estimate} goalTimeS={plan.goalTimeS} unit={user.unitPref} />
       <PlanView plan={vm} unit={user.unitPref} />
+      <WorkoutGuide />
     </div>
   );
 }

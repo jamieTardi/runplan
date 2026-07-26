@@ -194,6 +194,14 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   const fixed = longKm + sumFixed(workouts);
   const targetFlex = Math.max(0, planned - fixed);
   const sumW = flexDays.reduce((a, d) => a + d.weight, 0) || 1;
+  // One plain easy run a week finishes with strides — relaxed 20 s
+  // accelerations that maintain leg speed at almost no fatigue cost. The day
+  // before the long run is preferred (primes the legs for it); cutback weeks
+  // stay fully relaxed.
+  const stridesDow = week.isCutback
+    ? null
+    : ((flexDays.find((d) => d.role === "easy1") ?? flexDays.find((d) => d.role === "easy2"))
+        ?.dow ?? null);
   for (const d of flexDays) {
     const km = roundKm((targetFlex * d.weight) / sumW);
     workouts[d.dow] =
@@ -201,7 +209,7 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
         ? recovery(easy, km)
         : d.role === "qualityB"
           ? gaStrides(easy, quality, km)
-          : easyRun(easy, km);
+          : easyRun(easy, km, d.dow === stridesDow && km >= 4);
   }
 
   return finalize(week, workouts);
@@ -222,14 +230,16 @@ function rest(): Omit<PlanWorkout, "dow" | "dateISO"> {
   };
 }
 
-function easyRun(z: PaceZones, km: number) {
+function easyRun(z: PaceZones, km: number, withStrides = false) {
   return {
     type: "easy" as const,
     distanceKm: km,
     paceLowSPerKm: Math.round(z.easyFast),
     paceHighSPerKm: Math.round(z.easySlow),
-    segments: null,
-    description: "Easy run",
+    segments: withStrides
+      ? [{ kind: "strides" as const, label: "6 × 20s strides @ rep effort" }]
+      : null,
+    description: withStrides ? "Easy run + strides" : "Easy run",
   };
 }
 

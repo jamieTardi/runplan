@@ -14,6 +14,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-26",
+    title: "Strides on easy runs + workout guide",
+    tag: "New",
+    items: [
+      "One easy run a week now finishes with 6 × 20-second strides — relaxed accelerations that sharpen form and leg speed without adding fatigue. Newly generated plans pick them up automatically; cutback weeks stay fully relaxed.",
+      "Not sure what a threshold run or a VO₂max session actually is? Every workout type now has a plain-English explanation — tap any session to read it, or open the new \"Workout guide\" at the bottom of your plan page.",
+    ],
+  },
+  {
     date: "2026-07-24",
     title: "Beginner-friendly setup",
     tag: "New",

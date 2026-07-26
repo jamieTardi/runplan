@@ -10,21 +10,99 @@ export const PHASE_META: Record<Phase, { label: string; short: string; color: st
 
 export const WORKOUT_META: Record<
   WorkoutType,
-  { label: string; short: string; color: string }
+  { label: string; short: string; color: string; blurb: string }
 > = {
-  rest: { label: "Rest", short: "Rest", color: "#94a3b8" },
-  recovery: { label: "Recovery", short: "REC", color: "#38bdf8" },
-  easy: { label: "Easy", short: "E", color: "#22c55e" },
-  general_aerobic: { label: "General aerobic", short: "GA", color: "#14b8a6" },
-  medium_long: { label: "Medium-long", short: "ML", color: "#0ea5e9" },
-  long: { label: "Long run", short: "LONG", color: "#6366f1" },
-  marathon_pace: { label: "Marathon pace", short: "MP", color: "#8b5cf6" },
-  threshold: { label: "Threshold", short: "THR", color: "#f59e0b" },
-  vo2: { label: "VO₂max intervals", short: "VO₂", color: "#f43f5e" },
-  intervals: { label: "Intervals", short: "INT", color: "#ef4444" },
-  strides: { label: "Strides", short: "ST", color: "#d946ef" },
-  race: { label: "Race", short: "RACE", color: "#f97316" },
-  strength: { label: "Strength", short: "STR", color: "#a1a1aa" },
+  rest: {
+    label: "Rest",
+    short: "Rest",
+    color: "#94a3b8",
+    blurb:
+      "No running today. Rest is where your body absorbs training and gets stronger — take it as seriously as the runs.",
+  },
+  recovery: {
+    label: "Recovery",
+    short: "REC",
+    color: "#38bdf8",
+    blurb:
+      "A short, very gentle jog that promotes blood flow after harder days. Keep it genuinely slow — it should feel almost too easy.",
+  },
+  easy: {
+    label: "Easy",
+    short: "E",
+    color: "#22c55e",
+    blurb:
+      "Comfortable, conversational running that builds your aerobic base. You should be able to chat in full sentences the whole way.",
+  },
+  general_aerobic: {
+    label: "General aerobic",
+    short: "GA",
+    color: "#14b8a6",
+    blurb:
+      "A standard aerobic run, a touch quicker than easy pace but still comfortable. Adds endurance without leaving you tired for the key sessions.",
+  },
+  medium_long: {
+    label: "Medium-long",
+    short: "ML",
+    color: "#0ea5e9",
+    blurb:
+      "A longer midweek run at easy effort. Builds endurance on top of the weekly long run without needing a weekend-sized slot.",
+  },
+  long: {
+    label: "Long run",
+    short: "LONG",
+    color: "#6366f1",
+    blurb:
+      "The cornerstone of the week: a long, steady run that builds endurance and mental strength. Start relaxed and keep the effort easy unless pace work is prescribed.",
+  },
+  marathon_pace: {
+    label: "Marathon pace",
+    short: "MP",
+    color: "#8b5cf6",
+    blurb:
+      "A run with a block at your goal race pace, teaching your body the exact rhythm and effort you will hold on race day.",
+  },
+  threshold: {
+    label: "Threshold",
+    short: "THR",
+    color: "#f59e0b",
+    blurb:
+      "Sustained \"comfortably hard\" running — roughly the fastest pace you could hold for an hour. Raises the speed you can sustain before fatigue sets in.",
+  },
+  vo2: {
+    label: "VO₂max intervals",
+    short: "VO₂",
+    color: "#f43f5e",
+    blurb:
+      "Short, hard intervals at close to your maximum aerobic effort (about 3–5 km race effort) with jog recoveries. Boosts your engine's top end — tough, but over quickly.",
+  },
+  intervals: {
+    label: "Intervals",
+    short: "INT",
+    color: "#ef4444",
+    blurb:
+      "Repeated fast efforts with recovery jogs in between. Improves speed and running economy while the recoveries keep the workload manageable.",
+  },
+  strides: {
+    label: "Strides",
+    short: "ST",
+    color: "#d946ef",
+    blurb:
+      "Relaxed accelerations of about 20 seconds: build smoothly to near-top speed with quick, light steps, then walk or jog back. They sharpen form and leg speed without adding fatigue — not all-out sprints.",
+  },
+  race: {
+    label: "Race",
+    short: "RACE",
+    color: "#f97316",
+    blurb:
+      "Race day, or a tune-up race used as a hard training stimulus. Start conservatively, settle into goal pace and trust the training.",
+  },
+  strength: {
+    label: "Strength",
+    short: "STR",
+    color: "#a1a1aa",
+    blurb:
+      "A short bodyweight strength routine to support your running — stronger hips, glutes and core mean better form and fewer injuries. No gym needed.",
+  },
 };
 
 export const RACE_TYPE_LABEL: Record<RaceType, string> = {

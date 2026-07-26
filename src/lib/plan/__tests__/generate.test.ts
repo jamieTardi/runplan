@@ -242,3 +242,34 @@ describe("generatePlan — respects days-per-week variations", () => {
     expect(w.workouts.filter((d) => d.type === "rest").length).toBe(0);
   });
 });
+
+describe("strides on easy runs", () => {
+  const plan = generatePlan(SUB3);
+  const easyStrideDays = (w: (typeof plan.weeks)[number]) =>
+    w.workouts.filter(
+      (d) => d.type === "easy" && (d.segments ?? []).some((s) => s.kind === "strides"),
+    );
+
+  it("every non-cutback build week has exactly one easy run with strides", () => {
+    for (const w of plan.weeks.slice(0, -1)) {
+      if (w.isCutback) continue;
+      const days = easyStrideDays(w);
+      expect(days).toHaveLength(1);
+      expect(days[0].description).toBe("Easy run + strides");
+      expect(days[0].segments![0].label).toMatch(/\d+ × \d+s strides/);
+    }
+  });
+
+  it("cutback weeks stay fully relaxed (no easy-run strides)", () => {
+    const cutbacks = plan.weeks.filter((w) => w.isCutback);
+    expect(cutbacks.length).toBeGreaterThan(0);
+    for (const w of cutbacks) expect(easyStrideDays(w)).toHaveLength(0);
+  });
+
+  it("prefers the day before the long run", () => {
+    const w = plan.weeks.find((x) => !x.isCutback)!;
+    const [day] = easyStrideDays(w);
+    const dayBeforeLong = SUB3.longRunDow === 1 ? 7 : SUB3.longRunDow - 1;
+    expect(day.dow).toBe(dayBeforeLong);
+  });
+});
