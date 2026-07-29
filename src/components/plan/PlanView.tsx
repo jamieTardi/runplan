@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarOff, ChevronDown, Download, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, ChevronDown, Download, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -31,6 +31,8 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);
   const [refreshOpen, setRefreshOpen] = useState(false);
+  const [locked, setLocked] = useState(initial.locked);
+  const [lockBusy, setLockBusy] = useState(false);
   const today = todayISO();
 
   const currentWeekIdx = useMemo(() => {
@@ -104,10 +106,33 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   }
 
   async function deletePlan() {
+    if (locked) {
+      alert("This plan is locked. Tap the padlock to unlock it before deleting.");
+      return;
+    }
     if (!confirm("Delete this plan permanently?")) return;
-    await fetch(`/api/plans/${initial.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/plans/${initial.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Deleting the plan failed");
+      return;
+    }
     router.push("/");
     router.refresh();
+  }
+
+  async function toggleLock() {
+    if (lockBusy) return;
+    if (!locked && !confirm("Lock this plan? A locked plan can't be deleted until you unlock it.")) return;
+    if (locked && !confirm("Unlock this plan? It can then be deleted again.")) return;
+    setLockBusy(true);
+    const res = await fetch(`/api/plans/${initial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locked: !locked }),
+    });
+    if (res.ok) setLocked(!locked);
+    setLockBusy(false);
   }
 
   // --- derived -------------------------------------------------------------
@@ -157,7 +182,23 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
             <a className="btn btn-ghost" href={`/api/plans/${initial.id}/pdf`}>
               <Download size={16} /> <span className="hidden sm:inline">PDF</span>
             </a>
-            <button className="btn btn-ghost" onClick={deletePlan} aria-label="Delete plan" style={{ color: "var(--danger)" }}>
+            <button
+              className="btn btn-ghost"
+              onClick={toggleLock}
+              disabled={lockBusy}
+              aria-label={locked ? "Unlock plan" : "Lock plan"}
+              title={locked ? "Locked — can't be deleted. Tap to unlock." : "Lock plan to protect it from deletion"}
+              style={locked ? { color: "var(--primary)" } : undefined}
+            >
+              {locked ? <Lock size={16} /> : <LockOpen size={16} />}
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={deletePlan}
+              aria-label="Delete plan"
+              title={locked ? "Plan is locked — unlock to delete" : "Delete plan"}
+              style={{ color: locked ? "var(--faint)" : "var(--danger)" }}
+            >
               <Trash2 size={16} />
             </button>
           </div>
@@ -242,7 +283,12 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         />
       )}
       <GapDialog planId={initial.id} unit={unit} open={gapOpen} onOpenChange={setGapOpen} />
-      <RefreshPlanDialog planId={initial.id} open={refreshOpen} onOpenChange={setRefreshOpen} />
+      <RefreshPlanDialog
+        planId={initial.id}
+        includeStrength={initial.includeStrength}
+        open={refreshOpen}
+        onOpenChange={setRefreshOpen}
+      />
       <EditPlanDialog
         planId={initial.id}
         unit={unit}

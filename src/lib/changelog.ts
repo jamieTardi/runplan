@@ -15,6 +15,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-29",
+    title: "Strength on existing plans + plan locking",
+    tag: "New",
+    items: [
+      "\"Update workouts\" can now add strength sessions to a plan that's already under way — tick \"Include strength sessions\" in the dialog and the remaining weeks are re-planned with two short bodyweight routines a week. Works on every race distance.",
+      "You can now lock a plan (padlock button on the plan page). A locked plan can't be deleted until you deliberately unlock it — protection against a stray tap on the bin.",
+    ],
+  },
+  {
+    date: "2026-07-29",
     title: "Update an existing plan to the latest training engine",
     tag: "New",
     items: [

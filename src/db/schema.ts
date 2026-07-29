@@ -178,6 +178,8 @@ export const plans = pgTable(
     status: text("status", { enum: ["active", "archived"] })
       .notNull()
       .default("active"),
+    // Locked plans can't be deleted until explicitly unlocked.
+    locked: boolean("locked").notNull().default(false),
     // Raw generator inputs, so a plan can be regenerated deterministically.
     paramsSnapshot: jsonb("params_snapshot").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
