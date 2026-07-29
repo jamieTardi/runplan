@@ -174,6 +174,7 @@ export async function applyGapAndRebuild(
       goalTimeS: plan.goalTimeS,
       raceDateISO,
       daysPerWeek: plan.daysPerWeek,
+      peakVolumeKm: plan.peakVolumeKm,
       longRunDow: plan.longRunDow,
       restDow,
       includeTuneups: plan.includeTuneups,

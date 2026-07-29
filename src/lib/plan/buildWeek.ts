@@ -41,6 +41,8 @@ export interface BuildWeekInput {
   goalTimeS: number;
   raceDateISO: string;
   daysPerWeek: number;
+  /** Peak weekly volume of the whole plan — drives long-run progression. */
+  peakVolumeKm: number;
   longRunDow: number;
   /** Preferred rest day (ISO 1..7). Null → auto-placed. Ignored at 7 days/week. */
   restDow?: number | null;
@@ -142,8 +144,21 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   const restDays = chooseRestDays(roleFor, longRunDow, daysPerWeek, input.restDow ?? null);
 
   // 3. Fixed sessions (distance-defining).
-  const longFrac =
+  const baseFrac =
     week.phase === "endurance" ? 0.28 : week.phase === "race_prep" ? 0.32 : 0.3;
+  // The long run must approach the race distance no matter how modest the
+  // weekly volume: on a beginner marathon plan peaking ~55 km/wk, a flat ~30%
+  // fraction tops out near 16 km — nowhere near enough to finish 42 km. Lift
+  // the fraction (never above 60% of the week) so the peak week's long run
+  // reaches ~75% of race distance, blending up with ramp progress so early
+  // weeks stay gentle. High-volume plans are unaffected (their base fraction
+  // already covers the target) and ultras keep the base fraction — they lean
+  // on back-to-back long runs, not one huge session.
+  const peakVol = Math.max(input.peakVolumeKm, planned, 1);
+  const peakFrac = isUltra
+    ? baseFrac
+    : clamp((raceDistanceKm * 0.75) / peakVol, baseFrac, 0.6);
+  const longFrac = baseFrac + (peakFrac - baseFrac) * Math.min(planned / peakVol, 1);
   const longKm = roundKm(Math.min(planned * longFrac, longCapKm(raceDistanceKm)));
   const mlKm = roundKm(Math.min(planned * 0.18, longKm * 0.85, 23));
   const qaKm = clamp(roundKm(planned * 0.13), 5, 18);

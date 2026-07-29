@@ -203,6 +203,43 @@ describe("rest day preference", () => {
   });
 });
 
+describe("generatePlan — beginner-volume marathon long runs", () => {
+  const plan = generatePlan({
+    ...SUB3,
+    name: "First marathon",
+    goalTimeS: 4 * 3600 + 30 * 60,
+    currentFitness: { mode: "race", raceType: "10k", timeS: 62 * 60 },
+    startVolumeKm: 15,
+    peakVolumeKm: 55,
+    daysPerWeek: 4,
+    includeTuneups: false,
+  });
+
+  it("builds the long run up to ~32 km despite the low weekly volume", () => {
+    const longest = Math.max(
+      ...plan.weeks.flatMap((w) =>
+        w.workouts.filter((d) => d.type === "long").map((d) => d.distanceKm),
+      ),
+    );
+    expect(longest).toBeGreaterThanOrEqual(30);
+    expect(longest).toBeLessThanOrEqual(37);
+  });
+
+  it("keeps every long run within 60% of its week", () => {
+    for (const w of plan.weeks) {
+      const long = w.workouts.find((d) => d.type === "long");
+      if (!long) continue;
+      expect(long.distanceKm).toBeLessThanOrEqual(w.plannedVolumeKm * 0.6 + 0.5);
+    }
+  });
+
+  it("starts the long run gently", () => {
+    const firstLong = plan.weeks[0].workouts.find((d) => d.type === "long");
+    expect(firstLong).toBeDefined();
+    expect(firstLong!.distanceKm).toBeLessThanOrEqual(8);
+  });
+});
+
 describe("race-pace long-run work across race distances", () => {
   it("half-marathon plans get race-pace long-run work", () => {
     const plan = generatePlan({

@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-29",
+    title: "Proper long runs on lower-volume plans",
+    tag: "Fixed",
+    items: [
+      "Marathon and half-marathon plans built on modest weekly volume now grow the weekly long run toward the race distance — a first-marathon plan peaks around a 32 km long run instead of stalling near 16 km. Beginner marathon plans also peak slightly higher (~55 km/week). Existing plans keep their current schedule until rebuilt or regenerated.",
+    ],
+  },
+  {
+    date: "2026-07-29",
     title: "Net elevation per lap",
     tag: "Improved",
     items: [

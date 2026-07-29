@@ -59,6 +59,7 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       goalTimeS: input.goalTimeS,
       raceDateISO: input.raceDateISO,
       daysPerWeek: input.daysPerWeek,
+      peakVolumeKm: input.peakVolumeKm,
       longRunDow: input.longRunDow,
       restDow: input.restDow ?? null,
       includeTuneups: input.includeTuneups,

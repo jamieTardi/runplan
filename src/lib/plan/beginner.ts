@@ -62,7 +62,9 @@ const PEAK_FLOOR_KM: Partial<Record<RaceType, number>> = {
   "5k": 16,
   "10k": 22,
   half: 34,
-  marathon: 50,
+  // 55 (not 50) so the peak long run — capped at 60% of the week — can reach
+  // the ~32 km a first marathon needs.
+  marathon: 55,
 };
 const PEAK_CAP_KM: Partial<Record<RaceType, number>> = {
   "5k": 28,
