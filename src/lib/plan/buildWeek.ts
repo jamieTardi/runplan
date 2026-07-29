@@ -41,6 +41,8 @@ export interface BuildWeekInput {
   goalTimeS: number;
   raceDateISO: string;
   daysPerWeek: number;
+  /** Peak weekly volume of the whole plan — drives long-run progression. */
+  peakVolumeKm: number;
   longRunDow: number;
   /** Preferred rest day (ISO 1..7). Null → auto-placed. Ignored at 7 days/week. */
   restDow?: number | null;
@@ -142,8 +144,21 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   const restDays = chooseRestDays(roleFor, longRunDow, daysPerWeek, input.restDow ?? null);
 
   // 3. Fixed sessions (distance-defining).
-  const longFrac =
+  const baseFrac =
     week.phase === "endurance" ? 0.28 : week.phase === "race_prep" ? 0.32 : 0.3;
+  // The long run must approach the race distance no matter how modest the
+  // weekly volume: on a beginner marathon plan peaking ~55 km/wk, a flat ~30%
+  // fraction tops out near 16 km — nowhere near enough to finish 42 km. Lift
+  // the fraction (never above 60% of the week) so the peak week's long run
+  // reaches ~75% of race distance, blending up with ramp progress so early
+  // weeks stay gentle. High-volume plans are unaffected (their base fraction
+  // already covers the target) and ultras keep the base fraction — they lean
+  // on back-to-back long runs, not one huge session.
+  const peakVol = Math.max(input.peakVolumeKm, planned, 1);
+  const peakFrac = isUltra
+    ? baseFrac
+    : clamp((raceDistanceKm * 0.75) / peakVol, baseFrac, 0.6);
+  const longFrac = baseFrac + (peakFrac - baseFrac) * Math.min(planned / peakVol, 1);
   const longKm = roundKm(Math.min(planned * longFrac, longCapKm(raceDistanceKm)));
   const mlKm = roundKm(Math.min(planned * 0.18, longKm * 0.85, 23));
   const qaKm = clamp(roundKm(planned * 0.13), 5, 18);
@@ -194,6 +209,14 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
   const fixed = longKm + sumFixed(workouts);
   const targetFlex = Math.max(0, planned - fixed);
   const sumW = flexDays.reduce((a, d) => a + d.weight, 0) || 1;
+  // One plain easy run a week finishes with strides — relaxed 20 s
+  // accelerations that maintain leg speed at almost no fatigue cost. The day
+  // before the long run is preferred (primes the legs for it); cutback weeks
+  // stay fully relaxed.
+  const stridesDow = week.isCutback
+    ? null
+    : ((flexDays.find((d) => d.role === "easy1") ?? flexDays.find((d) => d.role === "easy2"))
+        ?.dow ?? null);
   for (const d of flexDays) {
     const km = roundKm((targetFlex * d.weight) / sumW);
     workouts[d.dow] =
@@ -201,7 +224,7 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
         ? recovery(easy, km)
         : d.role === "qualityB"
           ? gaStrides(easy, quality, km)
-          : easyRun(easy, km);
+          : easyRun(easy, km, d.dow === stridesDow && km >= 4);
   }
 
   return finalize(week, workouts);
@@ -222,14 +245,16 @@ function rest(): Omit<PlanWorkout, "dow" | "dateISO"> {
   };
 }
 
-function easyRun(z: PaceZones, km: number) {
+function easyRun(z: PaceZones, km: number, withStrides = false) {
   return {
     type: "easy" as const,
     distanceKm: km,
     paceLowSPerKm: Math.round(z.easyFast),
     paceHighSPerKm: Math.round(z.easySlow),
-    segments: null,
-    description: "Easy run",
+    segments: withStrides
+      ? [{ kind: "strides" as const, label: "6 × 20s strides @ rep effort" }]
+      : null,
+    description: withStrides ? "Easy run + strides" : "Easy run",
   };
 }
 
@@ -452,6 +477,15 @@ function buildRaceWeek(input: BuildWeekInput): PlanWeek {
   const raceDow = isoDayOfWeek(raceDateISO);
   const workouts: Record<number, Omit<PlanWorkout, "dow" | "dateISO">> = {};
 
+  // Race-week running scales with the runner: a 100 km/wk build keeps ~26 km
+  // of easy running before the race, a 4-day 55 km/wk beginner ~11 km. Run
+  // days are taken nearest-the-race first (shakeout, then 3/4/5 days out) up
+  // to the runner's normal frequency; 2 and 6 days out always rest.
+  const peakVol = Math.max(input.peakVolumeKm, week.plannedVolumeKm, 1);
+  const easyKm = clamp(Math.round(peakVol * 0.07), 4, 7);
+  const shakeoutKm = clamp(Math.round(peakVol * 0.06), 3, 5);
+  const runDaysToRace = [1, 3, 4, 5].slice(0, clamp(input.daysPerWeek - 1, 2, 4));
+
   for (let dow = 1; dow <= 7; dow++) {
     if (dow === raceDow) {
       workouts[dow] = {
@@ -470,21 +504,21 @@ function buildRaceWeek(input: BuildWeekInput): PlanWeek {
       continue;
     }
     const daysToRace = (raceDow - dow + 7) % 7;
-    if (daysToRace === 1) {
+    if (!runDaysToRace.includes(daysToRace)) {
+      workouts[dow] = rest();
+    } else if (daysToRace === 1) {
       workouts[dow] = {
         type: "easy",
-        distanceKm: 5,
+        distanceKm: shakeoutKm,
         paceLowSPerKm: Math.round(easy.easyFast),
         paceHighSPerKm: Math.round(easy.easySlow),
         segments: [{ kind: "strides", label: "4 × 20s strides" }],
         description: "Shakeout + strides",
       };
-    } else if (daysToRace === 2 || daysToRace === 6) {
-      workouts[dow] = rest();
     } else {
       workouts[dow] = {
         type: "easy",
-        distanceKm: 7,
+        distanceKm: easyKm,
         paceLowSPerKm: Math.round(easy.easyFast),
         paceHighSPerKm: Math.round(easy.easySlow),
         segments: daysToRace === 3 ? [{ kind: "strides", label: "3 × 20s strides" }] : null,

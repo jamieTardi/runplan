@@ -16,6 +16,7 @@ export interface GarminLap {
   avgHr: number | null;
   maxHr: number | null;
   elevGainM: number | null;
+  elevLossM: number | null;
 }
 
 export interface GarminSample {
@@ -94,6 +95,7 @@ function extractLaps(raw: any): GarminLap[] {
     avgHr: num(l.averageHR),
     maxHr: num(l.maxHR),
     elevGainM: num(l.elevationGain),
+    elevLossM: num(l.elevationLoss),
   }));
 }
 

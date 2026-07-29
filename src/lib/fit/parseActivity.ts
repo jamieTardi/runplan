@@ -124,6 +124,7 @@ export function parseFitActivity(input: Buffer): ParsedActivity {
     avgHr: num(l.avgHeartRate),
     maxHr: num(l.maxHeartRate),
     elevGainM: num(l.totalAscent),
+    elevLossM: num(l.totalDescent),
   }));
 
   // Synthetic negative id so manual uploads can't collide with real Garmin ids.

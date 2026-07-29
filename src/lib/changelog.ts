@@ -14,6 +14,32 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-29",
+    title: "Right-sized long runs and race week on lower-volume plans",
+    tag: "Fixed",
+    items: [
+      "Marathon and half-marathon plans built on modest weekly volume now grow the weekly long run toward the race distance — a first-marathon plan peaks around a 32 km long run instead of stalling near 16 km. Beginner marathon plans also peak slightly higher (~55 km/week). Existing plans keep their current schedule until rebuilt or regenerated.",
+      "Race week now matches the runner too: the number and length of the final easy runs scale with your training volume and days per week, instead of everyone getting the same 26 km high-mileage taper week.",
+    ],
+  },
+  {
+    date: "2026-07-29",
+    title: "Net elevation per lap",
+    tag: "Improved",
+    items: [
+      "The laps table on the workout detail page now shows net elevation change per lap (gain minus loss, e.g. −12 m on a descent) instead of climb only, and the activity summary shows elevation loss alongside gain.",
+    ],
+  },
+  {
+    date: "2026-07-26",
+    title: "Strides on easy runs + workout guide",
+    tag: "New",
+    items: [
+      "One easy run a week now finishes with 6 × 20-second strides — relaxed accelerations that sharpen form and leg speed without adding fatigue. Newly generated plans pick them up automatically; cutback weeks stay fully relaxed.",
+      "Not sure what a threshold run or a VO₂max session actually is? Every workout type now has a plain-English explanation — tap any session to read it, or open the new \"Workout guide\" at the bottom of your plan page.",
+    ],
+  },
+  {
     date: "2026-07-24",
     title: "Beginner-friendly setup",
     tag: "New",

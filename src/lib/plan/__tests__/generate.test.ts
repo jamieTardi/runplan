@@ -81,6 +81,13 @@ describe("generatePlan — sub-3 high volume", () => {
     }
   });
 
+  it("keeps the classic high-volume race week (~26 km before the race)", () => {
+    const raceWeek = plan.weeks.at(-1)!;
+    const before = raceWeek.workouts.filter((d) => d.type !== "race");
+    expect(before.reduce((a, d) => a + d.distanceKm, 0)).toBe(26);
+    expect(before.filter((d) => d.distanceKm > 0)).toHaveLength(4);
+  });
+
   it("never jumps build volume more than ~30% week to week", () => {
     for (let i = 1; i < plan.weeks.length; i++) {
       const prev = plan.weeks[i - 1].plannedVolumeKm;
@@ -203,6 +210,51 @@ describe("rest day preference", () => {
   });
 });
 
+describe("generatePlan — beginner-volume marathon long runs", () => {
+  const plan = generatePlan({
+    ...SUB3,
+    name: "First marathon",
+    goalTimeS: 4 * 3600 + 30 * 60,
+    currentFitness: { mode: "race", raceType: "10k", timeS: 62 * 60 },
+    startVolumeKm: 15,
+    peakVolumeKm: 55,
+    daysPerWeek: 4,
+    includeTuneups: false,
+  });
+
+  it("builds the long run up to ~32 km despite the low weekly volume", () => {
+    const longest = Math.max(
+      ...plan.weeks.flatMap((w) =>
+        w.workouts.filter((d) => d.type === "long").map((d) => d.distanceKm),
+      ),
+    );
+    expect(longest).toBeGreaterThanOrEqual(30);
+    expect(longest).toBeLessThanOrEqual(37);
+  });
+
+  it("keeps every long run within 60% of its week", () => {
+    for (const w of plan.weeks) {
+      const long = w.workouts.find((d) => d.type === "long");
+      if (!long) continue;
+      expect(long.distanceKm).toBeLessThanOrEqual(w.plannedVolumeKm * 0.6 + 0.5);
+    }
+  });
+
+  it("starts the long run gently", () => {
+    const firstLong = plan.weeks[0].workouts.find((d) => d.type === "long");
+    expect(firstLong).toBeDefined();
+    expect(firstLong!.distanceKm).toBeLessThanOrEqual(8);
+  });
+
+  it("keeps race week light and at the runner's normal frequency", () => {
+    const raceWeek = plan.weeks.at(-1)!;
+    const before = raceWeek.workouts.filter((d) => d.type !== "race");
+    expect(before.reduce((a, d) => a + d.distanceKm, 0)).toBeLessThanOrEqual(12);
+    // 4 days/week → race day plus 3 short runs, everything else rest.
+    expect(before.filter((d) => d.distanceKm > 0)).toHaveLength(3);
+  });
+});
+
 describe("race-pace long-run work across race distances", () => {
   it("half-marathon plans get race-pace long-run work", () => {
     const plan = generatePlan({
@@ -240,5 +292,36 @@ describe("generatePlan — respects days-per-week variations", () => {
     const plan = generatePlan({ ...SUB3, daysPerWeek: 7 });
     const w = plan.weeks[3];
     expect(w.workouts.filter((d) => d.type === "rest").length).toBe(0);
+  });
+});
+
+describe("strides on easy runs", () => {
+  const plan = generatePlan(SUB3);
+  const easyStrideDays = (w: (typeof plan.weeks)[number]) =>
+    w.workouts.filter(
+      (d) => d.type === "easy" && (d.segments ?? []).some((s) => s.kind === "strides"),
+    );
+
+  it("every non-cutback build week has exactly one easy run with strides", () => {
+    for (const w of plan.weeks.slice(0, -1)) {
+      if (w.isCutback) continue;
+      const days = easyStrideDays(w);
+      expect(days).toHaveLength(1);
+      expect(days[0].description).toBe("Easy run + strides");
+      expect(days[0].segments![0].label).toMatch(/\d+ × \d+s strides/);
+    }
+  });
+
+  it("cutback weeks stay fully relaxed (no easy-run strides)", () => {
+    const cutbacks = plan.weeks.filter((w) => w.isCutback);
+    expect(cutbacks.length).toBeGreaterThan(0);
+    for (const w of cutbacks) expect(easyStrideDays(w)).toHaveLength(0);
+  });
+
+  it("prefers the day before the long run", () => {
+    const w = plan.weeks.find((x) => !x.isCutback)!;
+    const [day] = easyStrideDays(w);
+    const dayBeforeLong = SUB3.longRunDow === 1 ? 7 : SUB3.longRunDow - 1;
+    expect(day.dow).toBe(dayBeforeLong);
   });
 });

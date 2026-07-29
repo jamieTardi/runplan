@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BarChart3, Send, Watch } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { WORKOUT_META } from "@/lib/planMeta";
+import { WORKOUT_META, softBg } from "@/lib/planMeta";
 import { workoutTypes, type WorkoutType } from "@/db/schema";
 import type { DayVM } from "@/lib/plan/viewModel";
 import { fmtDayDate } from "./DayCard";
@@ -95,6 +95,12 @@ export function EditWorkoutDialog({
       description={fmtDayDate(day.date)}
     >
       <div className="flex flex-col gap-4">
+        <p
+          className="text-xs leading-relaxed rounded-lg px-3 py-2"
+          style={{ background: softBg(WORKOUT_META[type].color, 10), color: "var(--muted)" }}
+        >
+          {WORKOUT_META[type].blurb}
+        </p>
         <label
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
           style={{ background: "var(--surface-2)" }}
