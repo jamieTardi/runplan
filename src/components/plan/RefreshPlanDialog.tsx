@@ -11,10 +11,12 @@ import { Modal } from "@/components/ui/Modal";
  */
 export function RefreshPlanDialog({
   planId,
+  includeStrength: currentStrength,
   open,
   onOpenChange,
 }: {
   planId: string;
+  includeStrength: boolean;
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
@@ -22,6 +24,7 @@ export function RefreshPlanDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rebuiltWeeks, setRebuiltWeeks] = useState<number | null>(null);
+  const [includeStrength, setIncludeStrength] = useState(currentStrength);
 
   function close(o: boolean) {
     if (!o) setRebuiltWeeks(null);
@@ -32,7 +35,11 @@ export function RefreshPlanDialog({
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/plans/${planId}/refresh`, { method: "POST" });
+      const res = await fetch(`/api/plans/${planId}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ includeStrength }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Something went wrong");
@@ -91,6 +98,23 @@ export function RefreshPlanDialog({
             times, notes and Garmin history. Upcoming sessions may change distance
             or type; sessions already sent to Garmin are replaced on your next sync.
           </p>
+          <label
+            className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
+            style={{ background: "var(--surface-2)" }}
+          >
+            <input
+              type="checkbox"
+              checked={includeStrength}
+              onChange={(e) => setIncludeStrength(e.target.checked)}
+              className="h-5 w-5 accent-[var(--accent)]"
+            />
+            <span className="text-sm">
+              <span className="font-semibold">Include strength sessions</span>{" "}
+              <span style={{ color: "var(--muted)" }}>
+                (two short bodyweight routines a week on easy days)
+              </span>
+            </span>
+          </label>
           {error && (
             <p className="text-sm" style={{ color: "var(--danger)" }}>
               {error}

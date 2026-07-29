@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["active", "archived"]).optional(),
+  locked: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,6 +35,18 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const plan = await db.query.plans.findFirst({
+    columns: { locked: true },
+    where: (p, { and, eq }) => and(eq(p.id, id), eq(p.userId, user.id)),
+  });
+  if (!plan) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (plan.locked) {
+    return NextResponse.json(
+      { error: "This plan is locked. Unlock it on the plan page before deleting." },
+      { status: 423 },
+    );
+  }
+
   const [deleted] = await db
     .delete(plans)
     .where(and(eq(plans.id, id), eq(plans.userId, user.id)))

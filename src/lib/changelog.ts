@@ -15,6 +15,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-29",
+    title: "Strength on existing plans + plan locking",
+    tag: "New",
+    items: [
+      "\"Update workouts\" can now add strength sessions to a plan that's already under way — tick \"Include strength sessions\" in the dialog and the remaining weeks are re-planned with two short bodyweight routines a week. Works on every race distance.",
+      "You can now lock a plan (padlock button on the plan page). A locked plan can't be deleted until you deliberately unlock it — protection against a stray tap on the bin.",
+    ],
+  },
+  {
+    date: "2026-07-29",
     title: "Update an existing plan to the latest training engine",
     tag: "New",
     items: [
@@ -36,6 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     tag: "Improved",
     items: [
       "The laps table on the workout detail page now shows net elevation change per lap (gain minus loss, e.g. −12 m on a descent) instead of climb only, and the activity summary shows elevation loss alongside gain.",
+      "Activities viewed before this change had no per-lap loss data stored and could show +0 m on downhill kilometres — they now refresh themselves automatically the next time you open them.",
     ],
   },
   {

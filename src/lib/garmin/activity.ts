@@ -171,10 +171,22 @@ export async function getActivityData(
     .from(garminActivityCache)
     .where(eq(garminActivityCache.activityId, activityId))
     .limit(1);
-  if (cached && cached.userId === userId) return cached.data as GarminActivityData;
+  const cachedData =
+    cached && cached.userId === userId ? (cached.data as GarminActivityData) : null;
+  if (cachedData) {
+    // Rows cached before per-lap elevation loss was extracted predate the
+    // elevLossM key entirely (extractLaps always writes it, even as null) —
+    // refetch those once so old activities pick the field up. Negative ids
+    // are synthetic (manual FIT uploads) and can't be refetched.
+    const stale = activityId > 0 && cachedData.laps.some((l) => !("elevLossM" in l));
+    if (!stale) return cachedData;
+  }
 
   const account = await getGarminAccount(userId);
-  if (!account) throw new GarminError("Garmin is not connected");
+  if (!account) {
+    if (cachedData) return cachedData;
+    throw new GarminError("Garmin is not connected");
+  }
   const client = clientFromTokens(account.tokens as Parameters<typeof clientFromTokens>[0]);
 
   const base = `${GC_API}/activity-service/activity/${activityId}`;
@@ -188,6 +200,8 @@ export async function getActivityData(
         .catch(() => null),
     ]);
   } catch (err) {
+    // A refresh of a stale-but-usable cache shouldn't take the page down.
+    if (cachedData) return cachedData;
     const msg = err instanceof Error ? err.message : String(err);
     throw new GarminError(`Fetching the activity from Garmin failed (${msg}).`);
   }

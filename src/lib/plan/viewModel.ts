@@ -46,6 +46,7 @@ export interface PlanVM {
   goalVdot: number;
   currentVdot: number;
   status: string;
+  locked: boolean;
   weeks: WeekVM[];
 }
 

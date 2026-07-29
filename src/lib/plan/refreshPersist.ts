@@ -27,9 +27,15 @@ export interface RefreshSummary {
  * (actuals, notes and Garmin links survive); replaced sessions already pushed
  * to Garmin are cleaned up best-effort.
  */
+export interface RefreshOptions {
+  /** Retrofit (or remove) strength sessions while re-planning. */
+  includeStrength?: boolean;
+}
+
 export async function refreshPlan(
   userId: string,
   planId: string,
+  opts: RefreshOptions = {},
 ): Promise<RefreshSummary | null> {
   const plan = await db.query.plans.findFirst({
     where: (p, { and, eq }) => and(eq(p.id, planId), eq(p.userId, userId)),
@@ -49,6 +55,8 @@ export async function refreshPlan(
   // history and stay byte-for-byte as they were.
   const target = plan.weeks.filter((w) => addDaysISO(iso(w.startDate), 6) >= today);
   if (target.length === 0) return { rebuiltWeeks: 0 };
+
+  const includeStrength = opts.includeStrength ?? plan.includeStrength;
 
   // Shared generation context (mirrors generatePlan's per-week mapping).
   const snapshot = planInputSchema.safeParse(plan.paramsSnapshot);
@@ -109,7 +117,7 @@ export async function refreshPlan(
       easy: easyZones,
     });
     built = applyStrength(built, {
-      enabled: plan.includeStrength,
+      enabled: includeStrength,
       isRaceWeek: week.weekIndex === totalWeeks - 1,
       longRunDow: plan.longRunDow,
     });
@@ -163,7 +171,18 @@ export async function refreshPlan(
         }),
       );
     }
-    await tx.update(plans).set({ updatedAt: new Date() }).where(eq(plans.id, planId));
+    await tx
+      .update(plans)
+      .set({
+        includeStrength,
+        // Keep the regeneration snapshot in step so a later Edit-plan rebuild
+        // doesn't silently drop the retrofitted setting.
+        paramsSnapshot: snapshot.success
+          ? { ...snapshot.data, includeStrength }
+          : plan.paramsSnapshot,
+        updatedAt: new Date(),
+      })
+      .where(eq(plans.id, planId));
   });
 
   // Best-effort: remove replaced sessions from Garmin Connect so stale
