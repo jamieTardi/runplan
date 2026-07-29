@@ -14,6 +14,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-29",
+    title: "Net elevation per lap",
+    tag: "Improved",
+    items: [
+      "The laps table on the workout detail page now shows net elevation change per lap (gain minus loss, e.g. −12 m on a descent) instead of climb only, and the activity summary shows elevation loss alongside gain.",
+    ],
+  },
+  {
     date: "2026-07-26",
     title: "Strides on easy runs + workout guide",
     tag: "New",

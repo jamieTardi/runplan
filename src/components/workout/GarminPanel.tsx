@@ -129,6 +129,15 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
   const paceFmt = (secPerUnit: number) =>
     `${Math.floor(secPerUnit / 60)}:${String(Math.round(secPerUnit % 60)).padStart(2, "0")}`;
 
+  // Net elevation change (gain − loss); activities cached before loss was
+  // extracted only have gain, shown explicitly as "+N m".
+  const lapElev = (gainM: number | null, lossM: number | null | undefined) => {
+    if (gainM == null) return "—";
+    if (lossM == null) return `+${Math.round(gainM)} m`;
+    const net = Math.round(gainM - lossM);
+    return `${net > 0 ? "+" : ""}${net} m`;
+  };
+
   const stats: Array<[string, string | null]> = [
     ["Distance", formatDistance(data.distanceM / 1000, unit, 2)],
     ["Moving time", data.movingDurationS ? formatDuration(data.movingDurationS) : formatDuration(data.durationS)],
@@ -136,6 +145,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
     ["Avg HR", data.avgHr ? `${Math.round(data.avgHr)} bpm` : null],
     ["Max HR", data.maxHr ? `${Math.round(data.maxHr)} bpm` : null],
     ["Elev gain", data.elevGainM != null ? `${Math.round(data.elevGainM)} m` : null],
+    ["Elev loss", data.elevLossM != null ? `${Math.round(data.elevLossM)} m` : null],
     ["Calories", data.calories ? `${Math.round(data.calories)}` : null],
     ["Cadence", data.avgCadence ? `${Math.round(data.avgCadence)} spm` : null],
   ];
@@ -231,7 +241,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
                   <th className="py-1 pr-3">Time</th>
                   <th className="py-1 pr-3">Pace</th>
                   <th className="py-1 pr-3">Avg HR</th>
-                  <th className="py-1">Elev +</th>
+                  <th className="py-1">Elev ±</th>
                 </tr>
               </thead>
               <tbody>
@@ -244,7 +254,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
                       {lap.avgPaceSPerKm ? formatPace(lap.avgPaceSPerKm, unit) : "—"}
                     </td>
                     <td className="py-1.5 pr-3">{lap.avgHr ? Math.round(lap.avgHr) : "—"}</td>
-                    <td className="py-1.5">{lap.elevGainM != null ? `${Math.round(lap.elevGainM)} m` : "—"}</td>
+                    <td className="py-1.5">{lapElev(lap.elevGainM, lap.elevLossM)}</td>
                   </tr>
                 ))}
               </tbody>
