@@ -36,6 +36,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     tag: "Improved",
     items: [
       "The laps table on the workout detail page now shows net elevation change per lap (gain minus loss, e.g. −12 m on a descent) instead of climb only, and the activity summary shows elevation loss alongside gain.",
+      "Activities viewed before this change had no per-lap loss data stored and could show +0 m on downhill kilometres — they now refresh themselves automatically the next time you open them.",
     ],
   },
   {
