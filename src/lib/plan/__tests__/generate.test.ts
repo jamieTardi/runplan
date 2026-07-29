@@ -81,6 +81,13 @@ describe("generatePlan — sub-3 high volume", () => {
     }
   });
 
+  it("keeps the classic high-volume race week (~26 km before the race)", () => {
+    const raceWeek = plan.weeks.at(-1)!;
+    const before = raceWeek.workouts.filter((d) => d.type !== "race");
+    expect(before.reduce((a, d) => a + d.distanceKm, 0)).toBe(26);
+    expect(before.filter((d) => d.distanceKm > 0)).toHaveLength(4);
+  });
+
   it("never jumps build volume more than ~30% week to week", () => {
     for (let i = 1; i < plan.weeks.length; i++) {
       const prev = plan.weeks[i - 1].plannedVolumeKm;
@@ -237,6 +244,14 @@ describe("generatePlan — beginner-volume marathon long runs", () => {
     const firstLong = plan.weeks[0].workouts.find((d) => d.type === "long");
     expect(firstLong).toBeDefined();
     expect(firstLong!.distanceKm).toBeLessThanOrEqual(8);
+  });
+
+  it("keeps race week light and at the runner's normal frequency", () => {
+    const raceWeek = plan.weeks.at(-1)!;
+    const before = raceWeek.workouts.filter((d) => d.type !== "race");
+    expect(before.reduce((a, d) => a + d.distanceKm, 0)).toBeLessThanOrEqual(12);
+    // 4 days/week → race day plus 3 short runs, everything else rest.
+    expect(before.filter((d) => d.distanceKm > 0)).toHaveLength(3);
   });
 });
 
