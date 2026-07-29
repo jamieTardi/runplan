@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-29",
+    title: "Update an existing plan to the latest training engine",
+    tag: "New",
+    items: [
+      "New \"Update workouts\" button on the plan page: re-plans this week and every week ahead with the latest RunPlan improvements, using your plan's current settings. Past weeks, completed runs, recorded times, notes and Garmin history are all kept — so plans created before an improvement (like the recent long-run fix) can pick it up without starting over.",
+    ],
+  },
+  {
+    date: "2026-07-29",
     title: "Right-sized long runs and race week on lower-volume plans",
     tag: "Fixed",
     items: [
