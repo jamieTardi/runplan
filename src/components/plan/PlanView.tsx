@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarOff, ChevronDown, Download, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, ChevronDown, Download, RefreshCw, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -12,6 +12,7 @@ import { distanceIn, formatDuration, formatPace, formatPaceRange, type Unit } fr
 import { EditWorkoutDialog, type WorkoutPatch } from "./EditWorkoutDialog";
 import { EditPlanDialog } from "./EditPlanDialog";
 import { GapDialog } from "./GapDialog";
+import { RefreshPlanDialog } from "./RefreshPlanDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
 
@@ -29,6 +30,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   const [editId, setEditId] = useState<string | null>(null);
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);
+  const [refreshOpen, setRefreshOpen] = useState(false);
   const today = todayISO();
 
   const currentWeekIdx = useMemo(() => {
@@ -149,6 +151,9 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
             <button className="btn btn-ghost" onClick={() => setGapOpen(true)}>
               <CalendarOff size={16} /> <span className="hidden sm:inline">Life happens</span>
             </button>
+            <button className="btn btn-ghost" onClick={() => setRefreshOpen(true)}>
+              <RefreshCw size={16} /> <span className="hidden sm:inline">Update workouts</span>
+            </button>
             <a className="btn btn-ghost" href={`/api/plans/${initial.id}/pdf`}>
               <Download size={16} /> <span className="hidden sm:inline">PDF</span>
             </a>
@@ -237,6 +242,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         />
       )}
       <GapDialog planId={initial.id} unit={unit} open={gapOpen} onOpenChange={setGapOpen} />
+      <RefreshPlanDialog planId={initial.id} open={refreshOpen} onOpenChange={setRefreshOpen} />
       <EditPlanDialog
         planId={initial.id}
         unit={unit}
