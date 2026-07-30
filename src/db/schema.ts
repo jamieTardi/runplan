@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -129,7 +130,7 @@ export const passkeys = pgTable(
 export const raceTypes = ["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"] as const;
 export type RaceType = (typeof raceTypes)[number];
 
-export const phases = ["endurance", "lt", "race_prep", "taper"] as const;
+export const phases = ["recovery", "endurance", "lt", "race_prep", "taper"] as const;
 export type Phase = (typeof phases)[number];
 
 export const workoutTypes = [
@@ -180,6 +181,10 @@ export const plans = pgTable(
       .default("active"),
     // Locked plans can't be deleted until explicitly unlocked.
     locked: boolean("locked").notNull().default(false),
+    // Set when this plan continues on from another plan's race ("next race").
+    previousPlanId: uuid("previous_plan_id").references((): AnyPgColumn => plans.id, {
+      onDelete: "set null",
+    }),
     // Raw generator inputs, so a plan can be regenerated deterministically.
     paramsSnapshot: jsonb("params_snapshot").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

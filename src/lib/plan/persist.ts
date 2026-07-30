@@ -7,11 +7,17 @@ import { todayISO } from "./dates";
 import { planInputSchema, type PlanInput } from "./inputSchema";
 import type { GeneratedPlan } from "./types";
 
+export interface SavePlanOptions {
+  /** Plan this one continues on from ("next race" chaining). */
+  previousPlanId?: string | null;
+}
+
 /** Persist a generated plan (plan + weeks + workouts) for a user. Returns the plan id. */
 export async function saveGeneratedPlan(
   userId: string,
   input: PlanInput,
   gen: GeneratedPlan,
+  opts: SavePlanOptions = {},
 ): Promise<string> {
   return db.transaction(async (tx) => {
     const [plan] = await tx
@@ -34,6 +40,7 @@ export async function saveGeneratedPlan(
         allowDoubles: input.allowDoubles ?? false,
         includeStrength: input.includeStrength ?? false,
         status: "active",
+        previousPlanId: opts.previousPlanId ?? null,
         paramsSnapshot: input,
       })
       .returning({ id: plans.id });
@@ -72,9 +79,13 @@ export async function saveGeneratedPlan(
 }
 
 /** Generate from user input and persist. Returns the new plan id. */
-export async function createPlanForUser(userId: string, input: PlanInput): Promise<string> {
+export async function createPlanForUser(
+  userId: string,
+  input: PlanInput,
+  opts: SavePlanOptions = {},
+): Promise<string> {
   const gen = generatePlan({ ...input, todayISO: todayISO() });
-  return saveGeneratedPlan(userId, input, gen);
+  return saveGeneratedPlan(userId, input, gen, opts);
 }
 
 /**

@@ -2,6 +2,7 @@ import type { Phase, RaceType, WorkoutType } from "@/db/schema";
 import { formatDistance } from "@/lib/units";
 
 export const PHASE_META: Record<Phase, { label: string; short: string; color: string }> = {
+  recovery: { label: "Post-race recovery", short: "Recovery", color: "#38bdf8" },
   endurance: { label: "Endurance", short: "Base", color: "#3b82f6" },
   lt: { label: "Lactate threshold", short: "LT", color: "#8b5cf6" },
   race_prep: { label: "Race preparation", short: "Race prep", color: "#f97316" },

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarOff, ChevronDown, Download, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -12,6 +12,7 @@ import { distanceIn, formatDuration, formatPace, formatPaceRange, type Unit } fr
 import { EditWorkoutDialog, type WorkoutPatch } from "./EditWorkoutDialog";
 import { EditPlanDialog } from "./EditPlanDialog";
 import { GapDialog } from "./GapDialog";
+import { NextRaceDialog } from "./NextRaceDialog";
 import { RefreshPlanDialog } from "./RefreshPlanDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
@@ -31,6 +32,7 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);
   const [refreshOpen, setRefreshOpen] = useState(false);
+  const [nextRaceOpen, setNextRaceOpen] = useState(false);
   const [locked, setLocked] = useState(initial.locked);
   const [lockBusy, setLockBusy] = useState(false);
   const today = todayISO();
@@ -144,6 +146,11 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   const totalKm = allDays.reduce((a, d) => a + d.distanceKm, 0);
   const doneKm = allDays.reduce((a, d) => a + creditedKm(d), 0);
 
+  // Recorded finish of the goal race (anchors the next-race fitness estimate).
+  const raceActual = allDays.find(
+    (d) => d.type === "race" && d.date === initial.raceDate && d.completed && d.actualDurationS,
+  );
+
   const easyZ = paceZones(initial.currentVdot);
   const goalZ = paceZones(initial.goalVdot);
   const goalPace = goalPaceSecPerKm(initial.raceType, initial.goalTimeS, initial.customDistanceKm);
@@ -178,6 +185,9 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
             </button>
             <button className="btn btn-ghost" onClick={() => setRefreshOpen(true)}>
               <RefreshCw size={16} /> <span className="hidden sm:inline">Update workouts</span>
+            </button>
+            <button className="btn btn-ghost" onClick={() => setNextRaceOpen(true)}>
+              <Flag size={16} /> <span className="hidden sm:inline">Next race</span>
             </button>
             <a className="btn btn-ghost" href={`/api/plans/${initial.id}/pdf`}>
               <Download size={16} /> <span className="hidden sm:inline">PDF</span>
@@ -227,7 +237,9 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-bold text-sm" style={{ color: "var(--muted)" }}>WEEKLY VOLUME</h2>
           <div className="flex gap-3 text-[11px]" style={{ color: "var(--faint)" }}>
-            {(["endurance", "lt", "race_prep", "taper"] as const).map((p) => (
+            {(["recovery", "endurance", "lt", "race_prep", "taper"] as const)
+              .filter((p) => weeks.some((w) => w.phase === p))
+              .map((p) => (
               <span key={p} className="flex items-center gap-1">
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: PHASE_META[p].color }} />
                 {PHASE_META[p].short}
@@ -283,6 +295,18 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
         />
       )}
       <GapDialog planId={initial.id} unit={unit} open={gapOpen} onOpenChange={setGapOpen} />
+      <NextRaceDialog
+        planId={initial.id}
+        prevRaceType={initial.raceType}
+        prevCustomDistanceKm={initial.customDistanceKm}
+        prevRaceDateISO={initial.raceDate}
+        prevRaceLabel={raceLabel(initial.raceType, initial.customDistanceKm, unit)}
+        basisTimeS={raceActual?.actualDurationS ?? initial.goalTimeS}
+        basisIsActual={Boolean(raceActual)}
+        unit={unit}
+        open={nextRaceOpen}
+        onOpenChange={setNextRaceOpen}
+      />
       <RefreshPlanDialog
         planId={initial.id}
         includeStrength={initial.includeStrength}

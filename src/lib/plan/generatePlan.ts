@@ -9,7 +9,7 @@ import {
   goalPaceSecPerKm as computeGoalPace,
   goalVdot as computeGoalVdot,
 } from "./goal";
-import { buildWeekPlans } from "./periodize";
+import { buildBridgeWeekPlans, buildWeekPlans } from "./periodize";
 import type { GeneratedPlan, GenerateInput, PlanWeek } from "./types";
 import { paceZones, raceDistanceM } from "./vdot";
 import { raceLabel } from "@/lib/planMeta";
@@ -21,12 +21,22 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
   const currentVdot = computeCurrentVdot(input.currentFitness);
   const goalPace = computeGoalPace(input.raceType, input.goalTimeS, input.customDistanceKm);
 
-  const weekPlans = buildWeekPlans(
-    input.todayISO,
-    input.raceDateISO,
-    input.startVolumeKm,
-    input.peakVolumeKm,
-  );
+  // Continuation plans bridge from the previous race (recovery → build →
+  // taper) instead of ramping up from scratch; the start date comes from the
+  // previous race day, not from today.
+  const weekPlans = input.continuation
+    ? buildBridgeWeekPlans(
+        input.continuation.prevRaceDateISO,
+        input.continuation.prevRaceDistanceKm,
+        input.raceDateISO,
+        input.peakVolumeKm,
+      )
+    : buildWeekPlans(
+        input.todayISO,
+        input.raceDateISO,
+        input.startVolumeKm,
+        input.peakVolumeKm,
+      );
   const totalWeeks = weekPlans.length;
   const feasibility = assessFeasibility(currentVdot, goalVdot, totalWeeks);
 

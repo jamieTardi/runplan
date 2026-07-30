@@ -127,11 +127,16 @@ function clamp(n: number, lo: number, hi: number) {
 }
 
 export function buildWeek(input: BuildWeekInput): PlanWeek {
-  const { week, raceDistanceKm, daysPerWeek, longRunDow, easy, quality } = input;
+  const { week, raceDistanceKm, longRunDow, easy, quality } = input;
   const planned = week.plannedVolumeKm;
   const isUltra = raceDistanceKm >= ULTRA_THRESHOLD_KM;
 
   if (input.isRaceWeek) return buildRaceWeek(input);
+
+  // Post-race recovery weeks (continuation plans): everything easy, and no
+  // more than four short runs no matter how often the runner normally trains.
+  const isRecoveryWeek = week.phase === "recovery";
+  const daysPerWeek = isRecoveryWeek ? Math.min(input.daysPerWeek, 4) : input.daysPerWeek;
 
   // 1. Assign a role to every weekday (1..7).
   const roleFor = new Map<number, Role>();
@@ -159,11 +164,14 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
     ? baseFrac
     : clamp((raceDistanceKm * 0.75) / peakVol, baseFrac, 0.6);
   const longFrac = baseFrac + (peakFrac - baseFrac) * Math.min(planned / peakVol, 1);
-  const longKm = roundKm(Math.min(planned * longFrac, longCapKm(raceDistanceKm)));
+  // Recovery weeks keep the "long" day but shrink it to a modest easy run.
+  const longKm = isRecoveryWeek
+    ? roundKm(Math.min(planned * 0.3, 12))
+    : roundKm(Math.min(planned * longFrac, longCapKm(raceDistanceKm)));
   const mlKm = roundKm(Math.min(planned * 0.18, longKm * 0.85, 23));
   const qaKm = clamp(roundKm(planned * 0.13), 5, 18);
   // Ultra plans stack a second long run the day before the long run (back-to-back).
-  const b2bKm = isUltra ? roundKm(Math.min(longKm * 0.6, planned * 0.2)) : 0;
+  const b2bKm = isUltra && !isRecoveryWeek ? roundKm(Math.min(longKm * 0.6, planned * 0.2)) : 0;
 
   const workouts: Record<number, Omit<PlanWorkout, "dow" | "dateISO">> = {};
 
@@ -175,9 +183,14 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
       continue;
     }
     const role = roleFor.get(dow)!;
+    if (isRecoveryWeek && (role === "medium_long" || role === "qualityA")) {
+      // No quality or medium-long work while recovering — plain easy days.
+      flexDays.push({ dow, weight: role === "qualityA" ? 0.7 : 1, role });
+      continue;
+    }
     switch (role) {
       case "long":
-        workouts[dow] = longRun(input, longKm);
+        workouts[dow] = isRecoveryWeek ? easyRun(easy, longKm) : longRun(input, longKm);
         break;
       case "medium_long":
         workouts[dow] = mediumLong(easy, mlKm);
@@ -222,7 +235,7 @@ export function buildWeek(input: BuildWeekInput): PlanWeek {
     workouts[d.dow] =
       d.role === "recovery"
         ? recovery(easy, km)
-        : d.role === "qualityB"
+        : d.role === "qualityB" && !isRecoveryWeek
           ? gaStrides(easy, quality, km)
           : easyRun(easy, km, d.dow === stridesDow && km >= 4);
   }
