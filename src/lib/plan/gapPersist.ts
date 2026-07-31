@@ -15,6 +15,7 @@ import {
   type WeekVolumeIn,
 } from "./gapRebuild";
 import { assessFeasibility, goalPaceSecPerKm } from "./goal";
+import { mergePreservedRows } from "./preserveRows";
 import { planInputSchema } from "./inputSchema";
 import { paceZones, raceDistanceM } from "./vdot";
 import type { PlanWorkout, WorkoutSegment } from "./types";
@@ -273,31 +274,9 @@ export async function applyGapAndRebuild(
         .update(weeks)
         .set({ plannedVolumeKm: volume })
         .where(eq(weeks.id, week.id));
-      await tx.insert(workouts).values(
-        built.workouts.map((d) => {
-          const prev = preservedByDate.get(`${d.dateISO}:${d.session ?? "am"}`);
-          return {
-            planId,
-            weekId: week.id,
-            date: d.dateISO,
-            dow: d.dow,
-            session: d.session ?? "am",
-            type: d.type,
-            distanceKm: d.distanceKm,
-            paceLowSPerKm: d.paceLowSPerKm ?? null,
-            paceHighSPerKm: d.paceHighSPerKm ?? null,
-            segments: d.segments ?? null,
-            description: d.description,
-            completed: prev?.completed ?? false,
-            completedAt: prev?.completedAt ?? null,
-            missed: prev?.missed ?? false,
-            actualDistanceKm: prev?.actualDistanceKm ?? null,
-            actualDurationS: prev?.actualDurationS ?? null,
-            notes: prev?.notes ?? null,
-            garminActivityId: prev?.garminActivityId ?? null,
-          };
-        }),
-      );
+      await tx
+        .insert(workouts)
+        .values(mergePreservedRows(planId, week.id, built.workouts, preservedByDate));
     }
 
     await tx.update(plans).set({ updatedAt: new Date() }).where(eq(plans.id, planId));

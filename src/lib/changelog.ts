@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Completed runs survive plan rebuilds untouched",
+    tag: "Fixed",
+    items: [
+      "Updating a plan (\"Update workouts\", a missed-training rebuild, or the weekly auto-update) no longer relabels sessions you've already done. Completed and missed runs now keep their original workout type, distance and paces through any rebuild — previously they could be re-attached to a different session type, which skewed the race estimator's VDOT. If your estimator reading recently jumped after a plan update, correcting those workouts' types (or this fix plus your next runs) will settle it.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Weekly auto-updating plans",
     tag: "New",
     items: [
