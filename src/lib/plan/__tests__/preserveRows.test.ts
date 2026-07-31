@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergePreservedRows } from "../preserveRows";
+import { mergePreservedRows, reconcileWeekVolume } from "../preserveRows";
 import type { PlanWorkout } from "../types";
 import type { workouts } from "@/db/schema";
 
@@ -120,5 +120,83 @@ describe("mergePreservedRows", () => {
         garminActivityId: null,
       },
     ]);
+  });
+});
+
+type Row = ReturnType<typeof mergePreservedRows>[number];
+
+function row(over: Partial<Row>): Row {
+  return {
+    planId: "plan-1",
+    weekId: "week-1",
+    date: "2026-07-27",
+    dow: 1,
+    session: "am",
+    type: "easy",
+    distanceKm: 16,
+    paceLowSPerKm: 286,
+    paceHighSPerKm: 316,
+    segments: null,
+    description: "Easy run",
+    completed: false,
+    completedAt: null,
+    missed: false,
+    actualDistanceKm: null,
+    actualDurationS: null,
+    notes: null,
+    garminActivityId: null,
+    ...over,
+  } as Row;
+}
+
+describe("reconcileWeekVolume", () => {
+  // The real broken week: 59 km already done at the ORIGINAL layout's
+  // distances, template future days assume a different past → 97 vs 101.4.
+  const partialWeek = () => [
+    row({ type: "threshold", distanceKm: 13, completed: true }),
+    row({ type: "medium_long", distanceKm: 18, completed: true }),
+    row({ type: "easy", distanceKm: 16, completed: true }),
+    row({ type: "recovery", distanceKm: 12, completed: true }),
+    row({ type: "long", distanceKm: 26 }),
+    row({ type: "recovery", distanceKm: 12 }),
+  ];
+
+  it("grows future flexible runs to close a partial-week shortfall", () => {
+    const out = reconcileWeekVolume(partialWeek(), 101.4);
+    expect(out.reduce((a, r) => a + r.distanceKm, 0)).toBe(101);
+    // The shortfall lands on the future recovery run, not the long run…
+    expect(out[5]).toMatchObject({ type: "recovery", distanceKm: 16 });
+    expect(out[4]).toMatchObject({ type: "long", distanceKm: 26 });
+    // …and history is never resized.
+    expect(out.slice(0, 4).map((r) => r.distanceKm)).toEqual([13, 18, 16, 12]);
+  });
+
+  it("leaves fully-future weeks alone — the template is already coherent", () => {
+    const rows = [row({ distanceKm: 10 }), row({ distanceKm: 10 })];
+    expect(reconcileWeekVolume(rows, 40)).toEqual(rows);
+  });
+
+  it("ignores rounding-noise imbalances", () => {
+    const rows = [row({ completed: true, distanceKm: 16 }), row({ distanceKm: 12 })];
+    expect(reconcileWeekVolume(rows, 29.4)).toEqual(rows);
+  });
+
+  it("shrinks without going below the floor or half the run's size", () => {
+    const out = reconcileWeekVolume(
+      [row({ completed: true, distanceKm: 30 }), row({ distanceKm: 8 })],
+      30,
+    );
+    // Wants −8, but the 8 km run can only give up to its floor of 4.
+    expect(out[1].distanceKm).toBe(4);
+    expect(out[0].distanceKm).toBe(30);
+  });
+
+  it("never touches race weeks — their sum exceeds the ramp target by design", () => {
+    const rows = [
+      row({ completed: true, distanceKm: 5 }),
+      row({ type: "race", distanceKm: 21.1 }),
+      row({ distanceKm: 4 }),
+    ];
+    expect(reconcileWeekVolume(rows, 26)).toEqual(rows);
   });
 });

@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Mid-week plan updates keep the week's volume honest",
+    tag: "Fixed",
+    items: [
+      "Updating a plan mid-week could leave that week short: the rebuilt layout assumed a clean slate, so if it disagreed with what you'd already run, the remaining days no longer added up to the week's target volume. Rebuilds now rebalance the rest of the week — easy, general-aerobic and recovery runs flex (at most ±50%, never below 4 km) until the week meets its planned volume again; long runs, workouts and race weeks are never resized.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Race estimator recalibrated to RunPlan's own sessions",
     tag: "Fixed",
     items: [
