@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { plans, workoutTypes, workouts } from "@/db/schema";
+import { plans, weeks, workoutTypes, workouts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { sendPlannedWorkoutToGarmin } from "@/lib/garmin/pushWorkout";
+import { goalPaceSecPerKm } from "@/lib/plan/goal";
+import { paceRangeForType } from "@/lib/plan/paceForType";
+import { paceZones } from "@/lib/plan/vdot";
 
 const patchSchema = z.object({
   completed: z.boolean().optional(),
@@ -31,9 +34,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // Verify ownership via the parent plan.
   const [row] = await db
-    .select({ workoutId: workouts.id, ownerId: plans.userId, currentVdot: plans.currentVdot })
+    .select({
+      workoutId: workouts.id,
+      type: workouts.type,
+      ownerId: plans.userId,
+      planId: plans.id,
+      currentVdot: plans.currentVdot,
+      goalVdot: plans.goalVdot,
+      goalTimeS: plans.goalTimeS,
+      raceType: plans.raceType,
+      customDistanceKm: plans.customDistanceKm,
+      weekIndex: weeks.weekIndex,
+    })
     .from(workouts)
     .innerJoin(plans, eq(workouts.planId, plans.id))
+    .innerJoin(weeks, eq(workouts.weekId, weeks.id))
     .where(eq(workouts.id, id))
     .limit(1);
 
@@ -42,6 +57,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const data = parsed.data;
   const update: Partial<typeof workouts.$inferInsert> = { ...data };
+
+  // Changing the session type re-derives its pace range (mirroring the
+  // generator's zones, with quality paces on the same current→goal VDOT
+  // interpolation as the week it sits in) and drops the old type's segment
+  // structure — stale threshold blocks on an easy run would mislead both the
+  // page and the Garmin/FIT export.
+  if (data.type !== undefined && data.type !== row.type) {
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(weeks)
+      .where(eq(weeks.planId, row.planId));
+    const progress = total > 1 ? row.weekIndex / (total - 1) : 1;
+    const eased = progress * progress * (3 - 2 * progress);
+    const qualityVdot = row.currentVdot + (row.goalVdot - row.currentVdot) * eased;
+    const range = paceRangeForType(
+      data.type,
+      paceZones(row.currentVdot),
+      paceZones(qualityVdot),
+      goalPaceSecPerKm(row.raceType, row.goalTimeS, row.customDistanceKm),
+    );
+    update.paceLowSPerKm = range?.low ?? null;
+    update.paceHighSPerKm = range?.high ?? null;
+    update.segments = null;
+  }
   if (data.completed !== undefined) {
     update.completedAt = data.completed ? new Date() : null;
     if (data.completed) update.missed = false;

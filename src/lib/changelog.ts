@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Changing a workout's type updates its paces",
+    tag: "Improved",
+    items: [
+      "Editing a session's type now re-derives its pace range to match what the plan generator would prescribe — switch a recovery run to easy and you get easy paces, switch to threshold and you get threshold pace for that week of the plan. Previously the old type's paces stuck around (and rode along to your watch). Leftover interval/segment structure from the old type is cleared too.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Mid-week plan updates keep the week's volume honest",
     tag: "Fixed",
     items: [
