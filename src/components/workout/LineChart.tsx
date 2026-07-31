@@ -21,6 +21,7 @@ export function LineChart({
   formatY,
   yTicks = 3,
   onHover,
+  syncX,
 }: {
   points: ChartPoint[];
   color: string;
@@ -33,6 +34,11 @@ export function LineChart({
   yTicks?: number;
   /** Fires when the hovered point changes (null when the pointer leaves). */
   onHover?: (point: ChartPoint | null) => void;
+  /**
+   * Crosshair x driven from outside (a sibling chart being hovered), so all
+   * charts on the page track the same spot. Local hover always wins.
+   */
+  syncX?: number | null;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -132,7 +138,16 @@ export function LineChart({
   }
 
   if (points.length < 2) return null;
-  const hp = hover != null ? points[hover] : null;
+  const syncIndex = (() => {
+    if (syncX == null) return null;
+    let best = 0;
+    for (let i = 1; i < points.length; i++) {
+      if (Math.abs(points[i].x - syncX) < Math.abs(points[best].x - syncX)) best = i;
+    }
+    return best;
+  })();
+  const activeIndex = hover ?? syncIndex;
+  const hp = activeIndex != null ? points[activeIndex] : null;
 
   return (
     <div

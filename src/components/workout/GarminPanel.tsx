@@ -35,6 +35,8 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
   const [data, setData] = useState<GarminActivityData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<[number, number] | null>(null);
+  // Distance under the pointer, mirrored to every chart as a synced crosshair.
+  const [hoverX, setHoverX] = useState<number | null>(null);
 
   const routeDistances = useMemo(
     () => cumulativeDistancesM((data?.route ?? []) as [number, number][]),
@@ -42,6 +44,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
   );
 
   function onChartHover(point: ChartPoint | null) {
+    setHoverX(point?.x ?? null);
     if (!point || !data || routeDistances.length === 0) {
       setHighlight(null);
       return;
@@ -190,6 +193,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             formatX={xFormat}
             formatY={(y) => `${Math.round(y)} bpm`}
             onHover={onChartHover}
+            syncX={hoverX}
           />
         </div>
       )}
@@ -206,6 +210,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             formatX={xFormat}
             formatY={(y) => `${paceFmt(y)} /${unit}`}
             onHover={onChartHover}
+            syncX={hoverX}
           />
         </div>
       )}
@@ -223,6 +228,7 @@ export function GarminPanel({ workoutId, unit }: { workoutId: string; unit: Unit
             formatX={xFormat}
             formatY={(y) => `${Math.round(y)} m`}
             onHover={onChartHover}
+            syncX={hoverX}
           />
         </div>
       )}
