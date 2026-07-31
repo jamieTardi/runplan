@@ -181,6 +181,9 @@ export const plans = pgTable(
       .default("active"),
     // Locked plans can't be deleted until explicitly unlocked.
     locked: boolean("locked").notNull().default(false),
+    // Weekly auto-update: the Sunday timer recalibrates this plan's paces to
+    // the runner's current estimated VDOT (when it has moved enough).
+    autoUpdate: boolean("auto_update").notNull().default(false),
     // Set when this plan continues on from another plan's race ("next race").
     previousPlanId: uuid("previous_plan_id").references((): AnyPgColumn => plans.id, {
       onDelete: "set null",

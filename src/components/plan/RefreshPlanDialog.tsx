@@ -12,11 +12,17 @@ import { Modal } from "@/components/ui/Modal";
 export function RefreshPlanDialog({
   planId,
   includeStrength: currentStrength,
+  currentVdot,
+  estimateVdot,
   open,
   onOpenChange,
 }: {
   planId: string;
   includeStrength: boolean;
+  /** VDOT the plan's paces are currently derived from. */
+  currentVdot: number;
+  /** Estimator's current-fitness VDOT (null when not enough recorded runs). */
+  estimateVdot: number | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
 }) {
@@ -24,10 +30,15 @@ export function RefreshPlanDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rebuiltWeeks, setRebuiltWeeks] = useState<number | null>(null);
+  const [newVdot, setNewVdot] = useState<number | null>(null);
   const [includeStrength, setIncludeStrength] = useState(currentStrength);
+  const [recalibrate, setRecalibrate] = useState(false);
 
   function close(o: boolean) {
-    if (!o) setRebuiltWeeks(null);
+    if (!o) {
+      setRebuiltWeeks(null);
+      setNewVdot(null);
+    }
     onOpenChange(o);
   }
 
@@ -38,7 +49,7 @@ export function RefreshPlanDialog({
       const res = await fetch(`/api/plans/${planId}/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ includeStrength }),
+        body: JSON.stringify({ includeStrength, recalibratePaces: recalibrate }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -47,6 +58,7 @@ export function RefreshPlanDialog({
         return;
       }
       setRebuiltWeeks(data.rebuiltWeeks ?? 0);
+      setNewVdot(data.vdot ?? null);
       setBusy(false);
       router.refresh();
     } catch {
@@ -77,6 +89,13 @@ export function RefreshPlanDialog({
               <>Nothing left to update — the plan is already finished.</>
             )}
           </p>
+          {newVdot != null && (
+            <p className="text-sm">
+              Training paces are now set from your current fitness —{" "}
+              <span className="font-bold tabular-nums">VDOT {newVdot.toFixed(1)}</span>. Your goal
+              time is unchanged.
+            </p>
+          )}
           <div className="flex justify-end">
             <button className="btn btn-primary" onClick={() => close(false)}>
               Done
@@ -115,6 +134,31 @@ export function RefreshPlanDialog({
               </span>
             </span>
           </label>
+          {estimateVdot != null && (
+            <label
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 cursor-pointer"
+              style={{ background: "var(--surface-2)" }}
+            >
+              <input
+                type="checkbox"
+                checked={recalibrate}
+                onChange={(e) => setRecalibrate(e.target.checked)}
+                className="h-5 w-5 accent-[var(--accent)]"
+              />
+              <span className="text-sm">
+                <span className="font-semibold">
+                  Set paces from your current VDOT{" "}
+                  <span className="tabular-nums">
+                    ({currentVdot.toFixed(1)} → {estimateVdot.toFixed(1)})
+                  </span>
+                </span>{" "}
+                <span style={{ color: "var(--muted)" }}>
+                  (easy and workout paces re-planned from your recorded runs; your goal time stays
+                  the same)
+                </span>
+              </span>
+            </label>
+          )}
           {error && (
             <p className="text-sm" style={{ color: "var(--danger)" }}>
               {error}

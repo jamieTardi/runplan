@@ -9,12 +9,14 @@ import { applyBeginnerNotes } from "./beginner";
 import { addDaysISO, todayISO } from "./dates";
 import { goalPaceSecPerKm } from "./goal";
 import { planInputSchema } from "./inputSchema";
-import { paceZones, raceDistanceM } from "./vdot";
+import { RACE_DISTANCES_M, paceZones, raceDistanceM, vdotToRaceTime } from "./vdot";
 import type { WeekPlan } from "./periodize";
 import { deleteGarminWorkoutsBestEffort } from "@/lib/garmin/pushWorkout";
 
 export interface RefreshSummary {
   rebuiltWeeks: number;
+  /** Set when the refresh recalibrated paces: the VDOT they now derive from. */
+  vdot?: number;
 }
 
 /**
@@ -30,6 +32,13 @@ export interface RefreshSummary {
 export interface RefreshOptions {
   /** Retrofit (or remove) strength sessions while re-planning. */
   includeStrength?: boolean;
+  /**
+   * Recalibrate training paces to this VDOT (e.g. the race estimator's
+   * current-fitness value). Persisted on the plan and, as an equivalent 10k
+   * fitness, in the params snapshot so Edit-plan rebuilds keep it. The goal
+   * time and goal VDOT are untouched.
+   */
+  currentVdot?: number;
 }
 
 export async function refreshPlan(
@@ -57,6 +66,7 @@ export async function refreshPlan(
   if (target.length === 0) return { rebuiltWeeks: 0 };
 
   const includeStrength = opts.includeStrength ?? plan.includeStrength;
+  const currentVdot = opts.currentVdot ?? plan.currentVdot;
 
   // Shared generation context (mirrors generatePlan's per-week mapping).
   const snapshot = planInputSchema.safeParse(plan.paramsSnapshot);
@@ -65,7 +75,7 @@ export async function refreshPlan(
   const totalWeeks = plan.weeks.length;
   const raceKm = raceDistanceM(plan.raceType, plan.customDistanceKm) / 1000;
   const goalPace = goalPaceSecPerKm(plan.raceType, plan.goalTimeS, plan.customDistanceKm);
-  const easyZones = paceZones(plan.currentVdot);
+  const easyZones = paceZones(currentVdot);
 
   // Tune-up placement counts race-prep weeks across the WHOLE plan, so rebuilt
   // weeks land tune-ups exactly where the original generator would have.
@@ -83,7 +93,7 @@ export async function refreshPlan(
   const rebuilt = target.map((week) => {
     const progress = totalWeeks > 1 ? week.weekIndex / (totalWeeks - 1) : 1;
     const eased = progress * progress * (3 - 2 * progress);
-    const qualityVdot = plan.currentVdot + (plan.goalVdot - plan.currentVdot) * eased;
+    const qualityVdot = currentVdot + (plan.goalVdot - currentVdot) * eased;
 
     const wp: WeekPlan = {
       weekIndex: week.weekIndex,
@@ -175,10 +185,23 @@ export async function refreshPlan(
       .update(plans)
       .set({
         includeStrength,
+        ...(opts.currentVdot != null && { currentVdot: opts.currentVdot }),
         // Keep the regeneration snapshot in step so a later Edit-plan rebuild
-        // doesn't silently drop the retrofitted setting.
+        // doesn't silently drop the retrofitted settings. A recalibrated VDOT
+        // is stored as its equivalent 10k race fitness (the snapshot has no
+        // raw-VDOT mode) — it derives back to the same value within rounding.
         paramsSnapshot: snapshot.success
-          ? { ...snapshot.data, includeStrength }
+          ? {
+              ...snapshot.data,
+              includeStrength,
+              ...(opts.currentVdot != null && {
+                currentFitness: {
+                  mode: "race" as const,
+                  raceType: "10k" as const,
+                  timeS: Math.round(vdotToRaceTime(opts.currentVdot, RACE_DISTANCES_M["10k"])),
+                },
+              }),
+            }
           : plan.paramsSnapshot,
         updatedAt: new Date(),
       })
@@ -189,5 +212,8 @@ export async function refreshPlan(
   // structured workouts don't linger on the calendar/watch.
   await deleteGarminWorkoutsBestEffort(userId, staleGarminIds);
 
-  return { rebuiltWeeks: rebuilt.length };
+  return {
+    rebuiltWeeks: rebuilt.length,
+    ...(opts.currentVdot != null && { vdot: opts.currentVdot }),
+  };
 }

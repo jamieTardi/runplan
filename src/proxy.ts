@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/garmin/sync-all",
   "/api/push/send-daily", // same CRON_SECRET-header auth as sync-all
+  "/api/plans/update-weekly", // same CRON_SECRET-header auth as sync-all
   "/api/billing/webhook", // Stripe-signature auth, not sessions
 ];
 

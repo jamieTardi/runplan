@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarOff, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, CalendarSync, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -17,7 +17,16 @@ import { RefreshPlanDialog } from "./RefreshPlanDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
 
-export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) {
+export function PlanView({
+  plan: initial,
+  unit,
+  estimateVdot = null,
+}: {
+  plan: PlanVM;
+  unit: Unit;
+  /** Current-fitness VDOT from the race estimator (for pace recalibration). */
+  estimateVdot?: number | null;
+}) {
   const router = useRouter();
   const [weeks, setWeeks] = useState<WeekVM[]>(initial.weeks);
 
@@ -35,6 +44,8 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
   const [nextRaceOpen, setNextRaceOpen] = useState(false);
   const [locked, setLocked] = useState(initial.locked);
   const [lockBusy, setLockBusy] = useState(false);
+  const [autoUpdate, setAutoUpdate] = useState(initial.autoUpdate);
+  const [autoUpdateBusy, setAutoUpdateBusy] = useState(false);
   const today = todayISO();
 
   const currentWeekIdx = useMemo(() => {
@@ -137,6 +148,18 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
     setLockBusy(false);
   }
 
+  async function toggleAutoUpdate() {
+    if (autoUpdateBusy) return;
+    setAutoUpdateBusy(true);
+    const res = await fetch(`/api/plans/${initial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autoUpdate: !autoUpdate }),
+    });
+    if (res.ok) setAutoUpdate(!autoUpdate);
+    setAutoUpdateBusy(false);
+  }
+
   // --- derived -------------------------------------------------------------
   const allDays = weeks.flatMap((w) => w.workouts);
   const runDays = allDays.filter((d) => d.type !== "rest");
@@ -192,6 +215,20 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
             <a className="btn btn-ghost" href={`/api/plans/${initial.id}/pdf`}>
               <Download size={16} /> <span className="hidden sm:inline">PDF</span>
             </a>
+            <button
+              className="btn btn-ghost"
+              onClick={toggleAutoUpdate}
+              disabled={autoUpdateBusy}
+              aria-label={autoUpdate ? "Turn off weekly auto-update" : "Turn on weekly auto-update"}
+              title={
+                autoUpdate
+                  ? "Weekly auto-update ON — paces recalibrate to your current VDOT every Sunday evening. Tap to turn off."
+                  : "Weekly auto-update: recalibrate paces to your current VDOT every Sunday evening"
+              }
+              style={autoUpdate ? { color: "var(--primary)" } : undefined}
+            >
+              <CalendarSync size={16} />
+            </button>
             <button
               className="btn btn-ghost"
               onClick={toggleLock}
@@ -310,6 +347,8 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
       <RefreshPlanDialog
         planId={initial.id}
         includeStrength={initial.includeStrength}
+        currentVdot={initial.currentVdot}
+        estimateVdot={estimateVdot}
         open={refreshOpen}
         onOpenChange={setRefreshOpen}
       />

@@ -49,6 +49,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     allowDoubles: plan.allowDoubles,
     includeStrength: plan.includeStrength,
     locked: plan.locked,
+    autoUpdate: plan.autoUpdate,
     goalVdot: plan.goalVdot,
     currentVdot: plan.currentVdot,
     status: plan.status,
@@ -112,7 +113,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         baselineVdot={plan.currentVdot}
         unit={user.unitPref}
       />
-      <PlanView plan={vm} unit={user.unitPref} />
+      <PlanView plan={vm} unit={user.unitPref} estimateVdot={estimate?.vdot ?? null} />
       <WorkoutGuide />
     </div>
   );
