@@ -10,6 +10,7 @@ const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   status: z.enum(["active", "archived"]).optional(),
   locked: z.boolean().optional(),
+  autoUpdate: z.boolean().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

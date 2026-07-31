@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Weekly auto-updating plans",
+    tag: "New",
+    items: [
+      "Your plan can now keep itself in tune: turn on weekly auto-update (the calendar-sync button on the plan page) and every Sunday evening RunPlan re-checks your current VDOT from your recorded runs. If your fitness has genuinely moved (half a VDOT point or more), the remaining weeks are re-paced to match — completed runs, notes and Garmin history untouched, goal time unchanged. Off by default; small wobbles are ignored so your paces aren't churning week to week.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Recalibrate your plan's paces to your current fitness",
     tag: "New",
     items: [

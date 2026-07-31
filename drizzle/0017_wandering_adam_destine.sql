@@ -1,0 +1,1 @@
+ALTER TABLE "plans" ADD COLUMN "auto_update" boolean DEFAULT false NOT NULL;
