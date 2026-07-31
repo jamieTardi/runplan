@@ -29,6 +29,15 @@ export interface GenerateInput {
   includeStrength?: boolean;
   /** Set by the simple builder — beginner plans get walk-break-friendly wording. */
   experience?: "beginner" | null;
+  /**
+   * Set when this plan continues straight on from a finished race (e.g. a
+   * marathon 4–6 weeks after a half): the plan starts the Monday after the
+   * previous race with recovery week(s), then bridge-periodises to race day.
+   */
+  continuation?: {
+    prevRaceDateISO: string;
+    prevRaceDistanceKm: number;
+  } | null;
 }
 
 export interface WorkoutSegment {

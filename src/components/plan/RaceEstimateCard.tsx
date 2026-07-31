@@ -27,10 +27,13 @@ function goalDelta(estimateS: number, goalS: number): { text: string; ahead: boo
 export function RaceEstimateCard({
   estimate,
   goalTimeS,
+  baselineVdot,
   unit,
 }: {
   estimate: RaceEstimate | null;
   goalTimeS: number;
+  /** VDOT the plan's paces were generated from, for the fitness delta. */
+  baselineVdot: number;
   unit: Unit;
 }) {
   if (!estimate) {
@@ -49,6 +52,13 @@ export function RaceEstimateCard({
 
   const delta = goalDelta(estimate.timeS, goalTimeS);
   const trend = estimate.trend ? TREND_META[estimate.trend] : null;
+  const vdotDiff = estimate.vdot - baselineVdot;
+  const vdotShift =
+    Math.abs(vdotDiff) < 0.5
+      ? { text: "level with plan start", color: "var(--muted)" }
+      : vdotDiff > 0
+        ? { text: `+${vdotDiff.toFixed(1)} since plan start`, color: "#22c55e" }
+        : { text: `−${Math.abs(vdotDiff).toFixed(1)} since plan start`, color: "#f59e0b" };
   const sinceLabel = new Date(estimate.sinceISO).toLocaleDateString(undefined, {
     day: "numeric",
     month: "short",
@@ -87,6 +97,12 @@ export function RaceEstimateCard({
             {formatPace(estimate.paceSPerKm, unit)}
           </div>
         </div>
+        <div>
+          <div className="text-3xl font-bold tabular-nums">{estimate.vdot.toFixed(1)}</div>
+          <div className="text-sm tabular-nums" style={{ color: "var(--muted)" }}>
+            VDOT · <span style={{ color: vdotShift.color }}>{vdotShift.text}</span>
+          </div>
+        </div>
         <div className="flex flex-col gap-1 pb-0.5">
           <span
             className="text-sm font-semibold tabular-nums"
@@ -104,7 +120,8 @@ export function RaceEstimateCard({
 
       <p className="text-xs" style={{ color: "var(--muted)" }}>
         Assumes a full taper and race-day conditions. Easy mileage counts less than workouts and
-        races, and recent runs count more than older ones.
+        races, and recent runs count more than older ones. VDOT is your Daniels fitness score —
+        higher is fitter; your plan&apos;s paces were set at {baselineVdot.toFixed(1)}.
       </p>
     </section>
   );

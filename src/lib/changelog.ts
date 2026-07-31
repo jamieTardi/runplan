@@ -14,6 +14,24 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-31",
+    title: "See your updated VDOT",
+    tag: "New",
+    items: [
+      "The race estimator now shows your current VDOT — the Daniels fitness score calculated from your recorded runs — alongside how far it's moved since your plan's paces were set. Watch it climb as training lands.",
+      "\"Plan your next race\" shows the updated VDOT behind its suggested goal time, so you can see exactly what fitness your follow-up plan is being built on.",
+    ],
+  },
+  {
+    date: "2026-07-30",
+    title: "Continue your training into a next race",
+    tag: "New",
+    items: [
+      "New \"Next race\" button on the plan page: chain a follow-up race straight onto your current plan — for example a marathon 4–6 weeks after your half. The new plan starts the Monday after race day with proper post-race recovery (two easy weeks after a marathon or longer, one otherwise), rebuilds on the fitness you've already banked, and tapers into the new race. No starting from scratch.",
+      "Your goal time for the next race is pre-filled from an equivalent-effort estimate — based on your recorded finish when you've logged one, or your goal time otherwise. Gaps long enough for a full training block (8+ weeks after recovery) get the complete periodised build.",
+    ],
+  },
+  {
     date: "2026-07-29",
     title: "Strength on existing plans + plan locking",
     tag: "New",

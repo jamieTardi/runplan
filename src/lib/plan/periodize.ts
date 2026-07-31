@@ -84,6 +84,84 @@ export function volumeRamp(
   return out;
 }
 
+/** Shortest gap (in whole training weeks) that can bridge two races. */
+export const BRIDGE_MIN_WEEKS = 3;
+
+/** First Monday of a continuation plan: the Monday after the previous race. */
+export function bridgeStartMondayISO(prevRaceDateISO: string): string {
+  return addDaysISO(mondayOfWeekISO(prevRaceDateISO), 7);
+}
+
+/** Whole Mon–Sun training weeks between the previous race and the next one. */
+export function bridgeTotalWeeks(prevRaceDateISO: string, raceDateISO: string): number {
+  const start = bridgeStartMondayISO(prevRaceDateISO);
+  return Math.floor(diffDaysISO(mondayOfWeekISO(raceDateISO), start) / 7) + 1;
+}
+
+/**
+ * Week plans for a plan that continues straight on from a finished race (e.g.
+ * a marathon 4–6 weeks after a half). Unlike a fresh build there is no
+ * from-scratch ramp: the runner already holds the previous block's fitness, so
+ * the shape is post-race recovery week(s) → a short build that returns to the
+ * previous peak volume → taper. Gaps long enough for full periodisation fall
+ * back to the standard phase shape after recovery. Callers validate the gap
+ * (BRIDGE_MIN_WEEKS..MAX_WEEKS); dates are trusted here.
+ */
+export function buildBridgeWeekPlans(
+  prevRaceDateISO: string,
+  prevRaceDistanceKm: number,
+  raceDateISO: string,
+  peakKm: number,
+): WeekPlan[] {
+  const start = bridgeStartMondayISO(prevRaceDateISO);
+  const totalWeeks = bridgeTotalWeeks(prevRaceDateISO, raceDateISO);
+
+  // Post-race recovery: two easy weeks after a marathon or longer, one after
+  // shorter races — but always leave at least a build week and the race week.
+  const recoveryLen = Math.min(prevRaceDistanceKm >= 42 ? 2 : 1, Math.max(1, totalWeeks - 2));
+  const rest = totalWeeks - recoveryLen;
+
+  let phases: Phase[];
+  if (rest >= MIN_WEEKS) {
+    phases = assignPhases(rest);
+  } else {
+    const taperLen = rest >= 5 ? 2 : 1;
+    const build = rest - taperLen;
+    phases = [];
+    for (let i = 0; i < build; i++) {
+      // Longer bridges earn a threshold week or two before race-specific work.
+      phases.push(build >= 3 && i < Math.floor(build / 2) ? "lt" : "race_prep");
+    }
+    for (let i = 0; i < taperLen; i++) phases.push("taper");
+  }
+
+  // Fitness carries over from the finished block, so the post-recovery ramp
+  // re-enters high (~80% of the previous peak) instead of building from scratch.
+  const ramp = volumeRamp(phases, round1(peakKm * 0.8), peakKm);
+
+  const recFracs = recoveryLen === 2 ? [0.35, 0.55] : [0.45];
+  const out: WeekPlan[] = [];
+  for (let i = 0; i < recoveryLen; i++) {
+    out.push({
+      weekIndex: i,
+      phase: "recovery",
+      plannedVolumeKm: round1(peakKm * recFracs[i]),
+      isCutback: true,
+      startDateISO: addDaysISO(start, i * 7),
+    });
+  }
+  phases.forEach((phase, i) => {
+    out.push({
+      weekIndex: recoveryLen + i,
+      phase,
+      plannedVolumeKm: ramp[i].plannedVolumeKm,
+      isCutback: ramp[i].isCutback,
+      startDateISO: addDaysISO(start, (recoveryLen + i) * 7),
+    });
+  });
+  return out;
+}
+
 export function buildWeekPlans(
   todayISO: string,
   raceDateISO: string,

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BRIDGE_MIN_WEEKS, MAX_WEEKS, bridgeTotalWeeks } from "./periodize";
 
 export const raceTypeEnum = z.enum(["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"]);
 /** Distances usable as a recent-race fitness marker (anything with a fixed length). */
@@ -32,6 +33,12 @@ export const planInputSchema = z.object({
   allowDoubles: z.boolean().default(false),
   includeStrength: z.boolean().default(false),
   experience: z.enum(["beginner"]).nullish(),
+  continuation: z
+    .object({
+      prevRaceDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+      prevRaceDistanceKm: z.number().positive().max(500),
+    })
+    .nullish(),
 }).superRefine((val, ctx) => {
   if (val.raceType === "custom" && !val.customDistanceKm) {
     ctx.addIssue({
@@ -39,6 +46,16 @@ export const planInputSchema = z.object({
       path: ["customDistanceKm"],
       message: "Enter a distance for your custom race",
     });
+  }
+  if (val.continuation) {
+    const weeks = bridgeTotalWeeks(val.continuation.prevRaceDateISO, val.raceDateISO);
+    if (weeks < BRIDGE_MIN_WEEKS || weeks > MAX_WEEKS) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["raceDateISO"],
+        message: `Your next race must be ${BRIDGE_MIN_WEEKS} to ${MAX_WEEKS} weeks after the previous one`,
+      });
+    }
   }
 });
 
