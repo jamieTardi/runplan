@@ -19,6 +19,27 @@ describe("race estimator", () => {
     expect(estimateRace([easyRun(50, 10, 1), easyRun(50, 10, 3)], HALF_M, TODAY)).toBeNull();
   });
 
+  it("a realistic Pfitz week's types agree instead of splitting into clusters", () => {
+    // Regression: one runner's real week (easy runs ~4:55/km, ml/long at the
+    // SAME prescribed easy zone, threshold = 20-min block inside a 13 km run,
+    // recovery ~5:11/km). Miscalibrated per-type intensity fractions split
+    // these into ~53 vs ~57 clusters and the median flipped between them on
+    // any reweighting; calibrated fractions must make them tell one story.
+    const week = (offset: number): CompletedRunInput[] => [
+      { dateISO: addDaysISO(TODAY, -offset - 3), type: "threshold", distanceKm: 13, durationS: 13 * 273 },
+      { dateISO: addDaysISO(TODAY, -offset - 2), type: "medium_long", distanceKm: 18, durationS: 18 * 294 },
+      { dateISO: addDaysISO(TODAY, -offset - 1), type: "easy", distanceKm: 16, durationS: 16 * 293 },
+      { dateISO: addDaysISO(TODAY, -offset), type: "recovery", distanceKm: 12, durationS: 12 * 311 },
+    ];
+    const est = estimateRace([...week(0), ...week(7)], HALF_M, TODAY)!;
+    expect(est).not.toBeNull();
+    expect(est.vdot).toBeGreaterThan(54);
+    expect(est.vdot).toBeLessThan(58.5);
+    // Agreement across types = a tight honest range, not a 5+ point spread.
+    const spreadS = est.slowTimeS - est.fastTimeS;
+    expect(spreadS / est.timeS).toBeLessThan(0.06);
+  });
+
   it("easy runs at VDOT-50 easy pace estimate roughly VDOT 50", () => {
     const runs = [1, 3, 5, 8, 10, 12].map((d) => easyRun(50, 10, d));
     const est = estimateRace(runs, HALF_M, TODAY);

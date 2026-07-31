@@ -66,22 +66,34 @@ const QUALITY_TYPES: ReadonlySet<WorkoutType> = new Set([
 ]);
 
 /**
- * Assumed avg-pace intensity (fraction of VO2max) per workout type. Steady
- * types match the paceZones calibration; quality types are deliberately lower
- * than their rep intensity because the recorded average includes warm-up,
- * cool-down and recovery jogging.
+ * Assumed avg-pace intensity (fraction of VO2max) per workout type,
+ * calibrated to the sessions RunPlan actually generates — NOT to textbook
+ * session definitions. Two things matter:
+ *
+ * - The generator prescribes medium-long and long runs in the SAME easy pace
+ *   zone as easy runs (Pfitz endurance style), so their assumed intensity
+ *   must sit beside easy's, not at a "moderate" 0.72 — that read genuine
+ *   easy-effort mileage as ~5 VDOT points of lost fitness.
+ * - Quality sessions are blocks inside a mostly-easy run ("20 min @
+ *   threshold" within 13 km, reps with jog recoveries and easy lead-in), so
+ *   the whole-activity average sits much closer to easy than to the rep
+ *   intensity.
+ *
+ * Miscalibration here splits one runner's runs into disagreeing per-type
+ * clusters and makes the reported VDOT hostage to which cluster holds the
+ * weighted median.
  */
 const TYPE_FRACTION: Partial<Record<WorkoutType, number>> = {
-  recovery: 0.58,
+  recovery: 0.62,
   easy: 0.65,
   strides: 0.66,
-  general_aerobic: 0.7,
-  medium_long: 0.72,
-  long: 0.72,
-  marathon_pace: 0.78,
-  threshold: 0.8,
-  vo2: 0.78,
-  intervals: 0.78,
+  general_aerobic: 0.67,
+  medium_long: 0.66,
+  long: 0.67,
+  marathon_pace: 0.74,
+  threshold: 0.74,
+  vo2: 0.73,
+  intervals: 0.73,
 };
 
 /** How much a run of each type is trusted, before recency weighting. */
