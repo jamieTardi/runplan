@@ -55,6 +55,68 @@ export function mergePreservedRows(
   return rows;
 }
 
+/** Types whose distance can flex to absorb a week-volume imbalance. */
+const FLEXIBLE_TYPES: ReadonlySet<string> = new Set(["easy", "general_aerobic", "recovery"]);
+/** Ignore imbalances smaller than this — rounding noise, not a broken week. */
+const MIN_DELTA_KM = 2;
+/** Never shrink a flexible run below this. */
+const MIN_RUN_KM = 4;
+
+/**
+ * Rebalance a PARTIALLY-COMPLETED week after a rebuild. The template lays the
+ * week out as if nothing had been run, but preserved history keeps its real
+ * distances — so when the old and new layouts disagree about the days already
+ * done, the remaining days no longer add up to the week's planned volume
+ * (e.g. a Sunday that should absorb 4 km of shortfall stays at the template's
+ * size). Nudge future easy/GA/recovery runs, 1 km at a time on the largest
+ * first, until the week matches its stored volume target; long runs and
+ * quality sessions are never resized, each flexible run moves at most ±50%,
+ * and untouched (fully-future) weeks pass through as-is since the template is
+ * already self-consistent. Race weeks are exempt: their row sum intentionally
+ * exceeds the stored ramp target (it includes the race itself).
+ */
+export function reconcileWeekVolume(
+  rows: NewWorkoutRow[],
+  plannedVolumeKm: number,
+): NewWorkoutRow[] {
+  if (!rows.some((r) => r.completed || r.missed)) return rows;
+  if (rows.some((r) => r.type === "race")) return rows;
+  const km = (r: NewWorkoutRow) => r.distanceKm ?? 0;
+  const total = rows.reduce((a, r) => a + km(r), 0);
+  let delta = Math.round(plannedVolumeKm - total);
+  if (Math.abs(delta) < MIN_DELTA_KM) return rows;
+
+  const out = rows.map((r) => ({ ...r }));
+  const bounds = new Map(
+    out.map((r) => [
+      r,
+      {
+        min: Math.max(MIN_RUN_KM, Math.floor(km(r) * 0.5)),
+        max: Math.ceil(km(r) * 1.5),
+      },
+    ]),
+  );
+  const candidates = (grow: boolean) =>
+    out
+      .filter(
+        (r) =>
+          !r.completed &&
+          !r.missed &&
+          FLEXIBLE_TYPES.has(r.type) &&
+          km(r) >= MIN_RUN_KM &&
+          (grow ? km(r) < bounds.get(r)!.max : km(r) > bounds.get(r)!.min),
+      )
+      .sort((a, b) => km(b) - km(a));
+
+  while (delta !== 0) {
+    const pool = candidates(delta > 0);
+    if (pool.length === 0) break; // best-effort: partial rebalance beats none
+    pool[0].distanceKm = km(pool[0]) + (delta > 0 ? 1 : -1);
+    delta += delta > 0 ? -1 : 1;
+  }
+  return out;
+}
+
 function preservedRow(planId: string, weekId: string, prev: WorkoutRow): NewWorkoutRow {
   return {
     planId,

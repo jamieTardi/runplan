@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
-import { mergePreservedRows } from "./preserveRows";
+import { mergePreservedRows, reconcileWeekVolume } from "./preserveRows";
 import { applyDoubles } from "./doubles";
 import { applyStrength } from "./strength";
 import { applyBeginnerNotes } from "./beginner";
@@ -158,7 +158,12 @@ export async function refreshPlan(
       await tx.delete(workouts).where(eq(workouts.weekId, week.id));
       await tx
         .insert(workouts)
-        .values(mergePreservedRows(planId, week.id, built.workouts, preservedByDate));
+        .values(
+          reconcileWeekVolume(
+            mergePreservedRows(planId, week.id, built.workouts, preservedByDate),
+            week.plannedVolumeKm,
+          ),
+        );
     }
     await tx
       .update(plans)
