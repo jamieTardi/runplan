@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Race estimator recalibrated to RunPlan's own sessions",
+    tag: "Fixed",
+    items: [
+      "The estimator's per-workout intensity assumptions now match the sessions RunPlan actually prescribes: medium-long and long runs are judged as the easy-zone efforts they are, and threshold/interval sessions account for being quality blocks inside a mostly-easy run. Previously your steady mileage and your workouts could imply VDOTs ~5 points apart, and the headline number jumped between the two camps. Expect a more stable reading — and for most training mixes, a slightly higher one.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Completed runs survive plan rebuilds untouched",
     tag: "Fixed",
     items: [
