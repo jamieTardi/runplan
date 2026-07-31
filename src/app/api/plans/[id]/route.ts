@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { plans } from "@/db/schema";
+import { plans, workouts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteGarminWorkoutsBestEffort } from "@/lib/garmin/pushWorkout";
 
 const patchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -47,11 +48,23 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     );
   }
 
+  // Collect Garmin Connect workout ids before the cascade wipes the rows, so
+  // deleting the plan can also scrub its sent sessions from Garmin.
+  const sent = await db
+    .select({ garminWorkoutId: workouts.garminWorkoutId })
+    .from(workouts)
+    .where(and(eq(workouts.planId, id), isNotNull(workouts.garminWorkoutId)));
+
   const [deleted] = await db
     .delete(plans)
     .where(and(eq(plans.id, id), eq(plans.userId, user.id)))
     .returning({ id: plans.id });
 
   if (!deleted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  await deleteGarminWorkoutsBestEffort(
+    user.id,
+    sent.map((r) => r.garminWorkoutId as number),
+  );
   return NextResponse.json({ ok: true });
 }

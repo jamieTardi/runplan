@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Deleting a plan tidies up Garmin too",
+    tag: "Improved",
+    items: [
+      "Deleting a plan now also removes the workouts it sent to Garmin Connect — no more orphaned sessions in your workout library or on your watch calendar after a plan is gone.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "See your updated VDOT",
     tag: "New",
     items: [
