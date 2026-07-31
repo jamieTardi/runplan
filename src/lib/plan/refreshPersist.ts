@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
+import { mergePreservedRows } from "./preserveRows";
 import { applyDoubles } from "./doubles";
 import { applyStrength } from "./strength";
 import { applyBeginnerNotes } from "./beginner";
@@ -155,31 +156,9 @@ export async function refreshPlan(
   await db.transaction(async (tx) => {
     for (const { week, built, preservedByDate } of rebuilt) {
       await tx.delete(workouts).where(eq(workouts.weekId, week.id));
-      await tx.insert(workouts).values(
-        built.workouts.map((d) => {
-          const prev = preservedByDate.get(`${d.dateISO}:${d.session ?? "am"}`);
-          return {
-            planId,
-            weekId: week.id,
-            date: d.dateISO,
-            dow: d.dow,
-            session: d.session ?? "am",
-            type: d.type,
-            distanceKm: d.distanceKm,
-            paceLowSPerKm: d.paceLowSPerKm ?? null,
-            paceHighSPerKm: d.paceHighSPerKm ?? null,
-            segments: d.segments ?? null,
-            description: d.description,
-            completed: prev?.completed ?? false,
-            completedAt: prev?.completedAt ?? null,
-            missed: prev?.missed ?? false,
-            actualDistanceKm: prev?.actualDistanceKm ?? null,
-            actualDurationS: prev?.actualDurationS ?? null,
-            notes: prev?.notes ?? null,
-            garminActivityId: prev?.garminActivityId ?? null,
-          };
-        }),
-      );
+      await tx
+        .insert(workouts)
+        .values(mergePreservedRows(planId, week.id, built.workouts, preservedByDate));
     }
     await tx
       .update(plans)
