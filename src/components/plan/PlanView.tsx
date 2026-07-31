@@ -17,7 +17,16 @@ import { RefreshPlanDialog } from "./RefreshPlanDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
 
-export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) {
+export function PlanView({
+  plan: initial,
+  unit,
+  estimateVdot = null,
+}: {
+  plan: PlanVM;
+  unit: Unit;
+  /** Current-fitness VDOT from the race estimator (for pace recalibration). */
+  estimateVdot?: number | null;
+}) {
   const router = useRouter();
   const [weeks, setWeeks] = useState<WeekVM[]>(initial.weeks);
 
@@ -310,6 +319,8 @@ export function PlanView({ plan: initial, unit }: { plan: PlanVM; unit: Unit }) 
       <RefreshPlanDialog
         planId={initial.id}
         includeStrength={initial.includeStrength}
+        currentVdot={initial.currentVdot}
+        estimateVdot={estimateVdot}
         open={refreshOpen}
         onOpenChange={setRefreshOpen}
       />

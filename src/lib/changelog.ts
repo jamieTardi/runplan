@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Recalibrate your plan's paces to your current fitness",
+    tag: "New",
+    items: [
+      "\"Update workouts\" can now set your training paces from your current VDOT instead of the one your plan was created with. If your fitness has moved on — or the plan was set up a touch optimistic — tick \"Set paces from your current VDOT\" and every remaining week is re-planned with easy and workout paces that match how you're actually running. Your goal time stays the same; the VDOT is worked out from your recorded runs, and the option appears once there's enough data.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Synced crosshairs on activity charts",
     tag: "Improved",
     items: [
