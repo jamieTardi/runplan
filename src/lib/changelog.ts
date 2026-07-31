@@ -15,6 +15,14 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-31",
+    title: "Synced crosshairs on activity charts",
+    tag: "Improved",
+    items: [
+      "On the workout detail page, hovering (or tapping) the heart-rate, pace or elevation chart now shows the crosshair and value at the same spot on all the other charts too — so you can read HR, pace and elevation together at any point of the run. Pinning with a click still works, and the route map keeps tracking the same position.",
+    ],
+  },
+  {
+    date: "2026-07-31",
     title: "Deleting a plan tidies up Garmin too",
     tag: "Improved",
     items: [
