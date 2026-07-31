@@ -201,7 +201,9 @@ export function NextRaceDialog({
           />
           <p className="text-xs mt-1" style={{ color: "var(--faint)" }}>
             Suggested from your {prevRaceLabel} {basisIsActual ? "finish" : "goal"} of{" "}
-            {formatDuration(basisTimeS)} (equivalent effort{raceType !== prevRaceType ? " at the new distance" : ""}).
+            {formatDuration(basisTimeS)} — updated VDOT {basisVdot.toFixed(1)} (equivalent effort
+            {raceType !== prevRaceType ? " at the new distance" : ""}).
+            {prevRaceType !== "custom" && " The new plan's paces are set from this."}
           </p>
         </div>
 

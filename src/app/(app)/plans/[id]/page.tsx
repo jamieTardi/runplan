@@ -106,7 +106,12 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         unit={user.unitPref}
         course={course}
       />
-      <RaceEstimateCard estimate={estimate} goalTimeS={plan.goalTimeS} unit={user.unitPref} />
+      <RaceEstimateCard
+        estimate={estimate}
+        goalTimeS={plan.goalTimeS}
+        baselineVdot={plan.currentVdot}
+        unit={user.unitPref}
+      />
       <PlanView plan={vm} unit={user.unitPref} />
       <WorkoutGuide />
     </div>

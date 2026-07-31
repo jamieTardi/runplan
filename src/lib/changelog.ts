@@ -14,6 +14,15 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-31",
+    title: "See your updated VDOT",
+    tag: "New",
+    items: [
+      "The race estimator now shows your current VDOT — the Daniels fitness score calculated from your recorded runs — alongside how far it's moved since your plan's paces were set. Watch it climb as training lands.",
+      "\"Plan your next race\" shows the updated VDOT behind its suggested goal time, so you can see exactly what fitness your follow-up plan is being built on.",
+    ],
+  },
+  {
     date: "2026-07-30",
     title: "Continue your training into a next race",
     tag: "New",
