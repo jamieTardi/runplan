@@ -138,10 +138,11 @@ export async function refreshPlan(
     );
 
     // Anything already done (or flagged missed) is re-attached by date —
-    // including Garmin links and original timestamps.
+    // including Garmin links and original timestamps. Cross-training swaps
+    // are deliberate injury substitutions and survive a rebuild too.
     const preservedByDate = new Map(
       week.workouts
-        .filter((w) => w.completed || w.missed)
+        .filter((w) => w.completed || w.missed || w.type === "cross_train")
         .map((w) => [`${iso(w.date)}:${w.session}`, w]),
     );
     for (const w of week.workouts) {

@@ -37,6 +37,7 @@ export async function autoSendUpcomingWorkouts(userId: string): Promise<AutoSend
         isNull(workouts.garminWorkoutId),
         ne(workouts.type, "rest"),
         ne(workouts.type, "strength"), // gym work never goes to the watch
+        ne(workouts.type, "cross_train"), // effort-based, not a run — nothing to schedule
         gte(workouts.date, today),
         lte(workouts.date, until),
       ),

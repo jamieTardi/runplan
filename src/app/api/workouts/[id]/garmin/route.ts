@@ -61,7 +61,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (row.ownerId !== auth.user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  if (row.workout.type === "rest" || row.workout.type === "strength") {
+  if (row.workout.type === "rest" || row.workout.type === "strength" || row.workout.type === "cross_train") {
     return NextResponse.json({ error: "This session isn't a run — nothing to send to Garmin" }, { status: 400 });
   }
 

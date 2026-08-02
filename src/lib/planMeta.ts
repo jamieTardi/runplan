@@ -1,4 +1,4 @@
-import type { Phase, RaceType, WorkoutType } from "@/db/schema";
+import type { CrossActivity, Phase, RaceType, WorkoutType } from "@/db/schema";
 import { formatDistance } from "@/lib/units";
 
 export const PHASE_META: Record<Phase, { label: string; short: string; color: string }> = {
@@ -104,7 +104,32 @@ export const WORKOUT_META: Record<
     blurb:
       "A short bodyweight strength routine to support your running — stronger hips, glutes and core mean better form and fewer injuries. No gym needed.",
   },
+  cross_train: {
+    label: "Cross-training",
+    short: "XT",
+    color: "#84cc16",
+    blurb:
+      "A like-for-like replacement for a run you can't do — same duration, same effort, none of the impact. Bike, pool or elliptical keeps the aerobic engine ticking over while an injury heals. Go by effort or heart rate, never pace.",
+  },
 };
+
+/** Display names and the verb used in session wording per cross-training activity. */
+export const CROSS_ACTIVITY_META: Record<CrossActivity, { label: string; verb: string }> = {
+  bike: { label: "Bike", verb: "riding" },
+  elliptical: { label: "Elliptical", verb: "work" },
+  swim: { label: "Swim", verb: "swimming" },
+  aqua_jog: { label: "Aqua jog", verb: "aqua jogging" },
+  row: { label: "Row", verb: "rowing" },
+  walk: { label: "Walk", verb: "walking" },
+};
+
+/** Card/dialog label for a workout, naming the activity for cross-training days. */
+export function workoutLabel(type: WorkoutType, crossActivity?: CrossActivity | null): string {
+  if (type === "cross_train" && crossActivity) {
+    return `${CROSS_ACTIVITY_META[crossActivity].label} (cross-train)`;
+  }
+  return WORKOUT_META[type].label;
+}
 
 export const RACE_TYPE_LABEL: Record<RaceType, string> = {
   "5k": "5K",

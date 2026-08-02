@@ -69,6 +69,10 @@ describe("matchActivities", () => {
     expect(matchActivities([run()], [workout({ completed: true })])).toHaveLength(0);
   });
 
+  it("never marks a cross-training day done from a run", () => {
+    expect(matchActivities([run()], [workout({ type: "cross_train", distanceKm: 0 })])).toHaveLength(0);
+  });
+
   it("picks the workout with the closest planned distance", () => {
     const short = workout({ id: "short", distanceKm: 6 });
     const long = workout({ id: "long", distanceKm: 22 });

@@ -5,7 +5,7 @@ import { ChevronLeft, Watch } from "lucide-react";
 import { db } from "@/db";
 import { plans, workouts } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { WORKOUT_META } from "@/lib/planMeta";
+import { WORKOUT_META, workoutLabel } from "@/lib/planMeta";
 import { formatDistance, formatDuration, formatPace, formatPaceRange } from "@/lib/units";
 import { isoDayOfWeek } from "@/lib/plan/dates";
 import { GarminPanel } from "@/components/workout/GarminPanel";
@@ -61,9 +61,9 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
               className="inline-block h-3.5 w-3.5 rounded-full shrink-0"
               style={{ background: meta.color }}
             />
-            {meta.label} — {fmtDayDate(dateISO)}
+            {workoutLabel(w.type, w.crossActivity)} — {fmtDayDate(dateISO)}
           </h1>
-          {w.type !== "rest" && pro && (
+          {w.type !== "rest" && w.type !== "cross_train" && pro && (
             <a className="btn btn-ghost" href={`/api/workouts/${w.id}/fit`}>
               <Watch size={16} /> .FIT
             </a>
@@ -75,6 +75,12 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         <section className="card p-5">
           <h2 className="font-bold mb-3">Planned</h2>
           <div className="flex flex-col gap-1.5 text-sm">
+            {w.type === "cross_train" && w.plannedDurationS != null && (
+              <p>
+                <strong>{Math.round(w.plannedDurationS / 60)} min</strong>
+                <span style={{ color: "var(--muted)" }}> by effort</span>
+              </p>
+            )}
             {w.distanceKm > 0 && (
               <p>
                 <strong>{formatDistance(w.distanceKm, unit)}</strong>

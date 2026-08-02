@@ -147,8 +147,13 @@ export const workoutTypes = [
   "strides",
   "race",
   "strength",
+  "cross_train",
 ] as const;
 export type WorkoutType = (typeof workoutTypes)[number];
+
+// Low-impact activities a run can be swapped for when injury rules running out.
+export const crossActivities = ["bike", "elliptical", "swim", "aqua_jog", "row", "walk"] as const;
+export type CrossActivity = (typeof crossActivities)[number];
 
 export const plans = pgTable(
   "plans",
@@ -232,6 +237,13 @@ export const workouts = pgTable(
     paceHighSPerKm: integer("pace_high_s_per_km"),
     // Structured segments for quality sessions, e.g. reps / MP blocks.
     segments: jsonb("segments"),
+    // Cross-training replacement (type = "cross_train"): which activity, and
+    // the prescribed duration — effort-based sessions are timed, not measured.
+    crossActivity: text("cross_activity", { enum: crossActivities }),
+    plannedDurationS: integer("planned_duration_s"),
+    // The original planned run this session replaced, so it can be restored
+    // when the runner is healthy again. Null for never-replaced sessions.
+    replacedFrom: jsonb("replaced_from"),
     description: text("description").notNull().default(""),
     completed: boolean("completed").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),

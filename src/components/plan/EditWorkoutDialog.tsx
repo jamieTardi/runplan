@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Send, Watch } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BarChart3, Bike, Send, Undo2, Watch } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { WORKOUT_META, softBg } from "@/lib/planMeta";
-import { workoutTypes, type WorkoutType } from "@/db/schema";
+import { CROSS_ACTIVITY_META, WORKOUT_META, softBg, workoutLabel } from "@/lib/planMeta";
+import { isCrossConvertible } from "@/lib/plan/crossTrain";
+import { crossActivities, workoutTypes, type CrossActivity, type WorkoutType } from "@/db/schema";
 import type { DayVM } from "@/lib/plan/viewModel";
 import { fmtDayDate } from "./DayCard";
 import { todayISO } from "@/lib/plan/dates";
@@ -56,6 +58,35 @@ export function EditWorkoutDialog({
   const [garminState, setGarminState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [garminError, setGarminError] = useState<string | null>(null);
 
+  const router = useRouter();
+  const [crossActivity, setCrossActivity] = useState<CrossActivity>(day.crossActivity ?? "bike");
+  const [crossBusy, setCrossBusy] = useState(false);
+  const [crossError, setCrossError] = useState<string | null>(null);
+  const isCross = day.type === "cross_train";
+
+  // Swap this run for a cross-training session (or switch activity / restore).
+  async function crossTrain(body: { activity: CrossActivity } | { restore: true }) {
+    setCrossBusy(true);
+    setCrossError(null);
+    try {
+      const res = await fetch(`/api/workouts/${day.id}/cross-train`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "That didn't work — try again");
+      }
+      onOpenChange(false);
+      router.refresh();
+    } catch (err) {
+      setCrossError(err instanceof Error ? err.message : "That didn't work — try again");
+    } finally {
+      setCrossBusy(false);
+    }
+  }
+
   async function sendToGarmin() {
     setGarminState("sending");
     setGarminError(null);
@@ -73,12 +104,17 @@ export function EditWorkoutDialog({
   function save() {
     const patch: WorkoutPatch = { completed };
     patch.missed = completed ? false : missed;
-    patch.type = type;
-    const pd = parseFloat(plannedDist);
-    if (!Number.isNaN(pd)) patch.distanceKm = toKm(pd);
+    // Cross-training sessions keep their planned shape — swapping back to a
+    // run goes through the restore button, not the type/distance fields.
+    if (!isCross) {
+      patch.type = type;
+      const pd = parseFloat(plannedDist);
+      if (!Number.isNaN(pd)) patch.distanceKm = toKm(pd);
+    }
 
     const ad = parseFloat(actualDist);
-    patch.actualDistanceKm = actualDist.trim() === "" || Number.isNaN(ad) ? null : toKm(ad);
+    patch.actualDistanceKm =
+      isCross || actualDist.trim() === "" || Number.isNaN(ad) ? null : toKm(ad);
     const at = actualTime.trim() === "" ? null : parseDuration(actualTime);
     patch.actualDurationS = at ?? null;
     patch.notes = notes.trim() === "" ? null : notes.trim();
@@ -91,7 +127,7 @@ export function EditWorkoutDialog({
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title={WORKOUT_META[day.type].label}
+      title={workoutLabel(day.type, day.crossActivity)}
       description={fmtDayDate(day.date)}
     >
       <div className="flex flex-col gap-4">
@@ -134,16 +170,19 @@ export function EditWorkoutDialog({
 
         {completed && (
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <span className="label">Actual distance ({distLabel})</span>
-              <input
-                className="input"
-                value={actualDist}
-                inputMode="decimal"
-                placeholder={String(+fromKm(day.distanceKm).toFixed(1))}
-                onChange={(e) => setActualDist(e.target.value)}
-              />
-            </div>
+            {/* Cross-training distance is bike/pool distance — never run volume. */}
+            {!isCross && (
+              <div>
+                <span className="label">Actual distance ({distLabel})</span>
+                <input
+                  className="input"
+                  value={actualDist}
+                  inputMode="decimal"
+                  placeholder={String(+fromKm(day.distanceKm).toFixed(1))}
+                  onChange={(e) => setActualDist(e.target.value)}
+                />
+              </div>
+            )}
             <div>
               <span className="label">Actual time (h:mm:ss)</span>
               <input
@@ -168,30 +207,86 @@ export function EditWorkoutDialog({
           />
         </div>
 
-        <details className="rounded-lg" style={{ background: "var(--surface-2)" }}>
-          <summary className="px-3 py-2 text-sm font-semibold cursor-pointer" style={{ color: "var(--muted)" }}>
-            Adjust the planned session
-          </summary>
-          <div className="grid grid-cols-2 gap-3 p-3 pt-1">
-            <div>
-              <span className="label">Type</span>
-              <select className="input" value={type} onChange={(e) => setType(e.target.value as WorkoutType)}>
-                {workoutTypes.map((t) => (
-                  <option key={t} value={t}>{WORKOUT_META[t].label}</option>
+        {!isCross && (
+          <details className="rounded-lg" style={{ background: "var(--surface-2)" }}>
+            <summary className="px-3 py-2 text-sm font-semibold cursor-pointer" style={{ color: "var(--muted)" }}>
+              Adjust the planned session
+            </summary>
+            <div className="grid grid-cols-2 gap-3 p-3 pt-1">
+              <div>
+                <span className="label">Type</span>
+                <select className="input" value={type} onChange={(e) => setType(e.target.value as WorkoutType)}>
+                  {workoutTypes
+                    .filter((t) => t !== "cross_train")
+                    .map((t) => (
+                      <option key={t} value={t}>{WORKOUT_META[t].label}</option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <span className="label">Planned distance ({distLabel})</span>
+                <input
+                  className="input"
+                  value={plannedDist}
+                  inputMode="decimal"
+                  onChange={(e) => setPlannedDist(e.target.value)}
+                />
+              </div>
+            </div>
+          </details>
+        )}
+
+        {!completed && (isCross || isCrossConvertible(day.type)) && (
+          <details className="rounded-lg" style={{ background: "var(--surface-2)" }} open={isCross}>
+            <summary className="px-3 py-2 text-sm font-semibold cursor-pointer" style={{ color: "var(--muted)" }}>
+              <span className="inline-flex items-center gap-1.5">
+                <Bike size={14} /> {isCross ? "Cross-training options" : "Can't run? Swap for cross-training"}
+              </span>
+            </summary>
+            <div className="flex flex-col gap-2.5 p-3 pt-1">
+              {!isCross && (
+                <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                  Replaces this run with a like-for-like session — same duration, same effort
+                  structure, none of the impact. You can restore the original run any time.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-1.5">
+                {crossActivities.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setCrossActivity(a)}
+                    className="btn py-1.5 px-2.5 text-xs"
+                    style={{
+                      background: crossActivity === a ? "var(--primary-soft)" : "var(--surface)",
+                      border: `1px solid ${crossActivity === a ? "var(--primary)" : "var(--border-strong)"}`,
+                      color: crossActivity === a ? "var(--primary)" : "var(--muted)",
+                    }}
+                  >
+                    {CROSS_ACTIVITY_META[a].label}
+                  </button>
                 ))}
-              </select>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => crossTrain({ activity: crossActivity })}
+                  disabled={crossBusy || (isCross && crossActivity === day.crossActivity)}
+                >
+                  {crossBusy ? "Swapping…" : isCross ? "Switch activity" : "Swap this session"}
+                </button>
+                {isCross && day.canRestore && (
+                  <button className="btn btn-ghost" onClick={() => crossTrain({ restore: true })} disabled={crossBusy}>
+                    <Undo2 size={16} /> Restore original run
+                  </button>
+                )}
+              </div>
+              {crossError && (
+                <p className="text-xs" style={{ color: "var(--danger, #e5484d)" }}>{crossError}</p>
+              )}
             </div>
-            <div>
-              <span className="label">Planned distance ({distLabel})</span>
-              <input
-                className="input"
-                value={plannedDist}
-                inputMode="decimal"
-                onChange={(e) => setPlannedDist(e.target.value)}
-              />
-            </div>
-          </div>
-        </details>
+          </details>
+        )}
 
         {garminState === "sent" && (
           <p className="text-xs" style={{ color: "var(--muted)" }}>
@@ -212,7 +307,7 @@ export function EditWorkoutDialog({
               <a className="btn btn-ghost" href={`/workouts/${day.id}`} title="Full workout detail with Garmin data">
                 <BarChart3 size={16} /> <span className="hidden sm:inline">Details</span>
               </a>
-              {day.type !== "strength" && (
+              {day.type !== "strength" && !isCross && (
                 <>
                   <a
                     className="btn btn-ghost"
