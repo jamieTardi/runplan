@@ -15,7 +15,9 @@ const patchSchema = z.object({
   actualDistanceKm: z.number().min(0).max(200).nullable().optional(),
   actualDurationS: z.number().int().min(0).max(86_400).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
-  type: z.enum(workoutTypes).optional(),
+  // Cross-training swaps go through /api/workouts/[id]/cross-train, which
+  // builds the session structure and the restore snapshot.
+  type: z.enum(workoutTypes).refine((t) => t !== "cross_train").optional(),
   distanceKm: z.number().min(0).max(100).optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   description: z.string().max(400).optional(),
@@ -80,6 +82,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     update.paceLowSPerKm = range?.low ?? null;
     update.paceHighSPerKm = range?.high ?? null;
     update.segments = null;
+    // Manually re-typing a cross-training day turns it back into a plain run —
+    // drop the activity, duration and restore snapshot so nothing lies around.
+    if (row.type === "cross_train") {
+      update.crossActivity = null;
+      update.plannedDurationS = null;
+      update.replacedFrom = null;
+    }
   }
   if (data.completed !== undefined) {
     update.completedAt = data.completed ? new Date() : null;

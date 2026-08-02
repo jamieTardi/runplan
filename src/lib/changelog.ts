@@ -14,6 +14,17 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-02",
+    title: "Injured? Swap runs for cross-training",
+    tag: "New",
+    items: [
+      "Any planned run can now be replaced with a like-for-like cross-training session — bike, elliptical, swim, aqua jog, row or walk. The swap keeps the run's duration and intensity structure (a threshold run becomes threshold-effort blocks, VO₂ intervals become hard/easy repeats) but prescribes it by effort and time instead of pace and distance.",
+      "Swap one session from its edit dialog, or a whole stretch at once with the new Cross-train button on the plan page — pick a date range and every not-yet-done run in it converts. Completed, missed, rest, strength and race days are never touched.",
+      "Every swap keeps the original run, so when you're healthy you can restore a single session — or a whole date range — back to exactly what the plan prescribed.",
+      "Cross-training days count toward session progress but never toward run volume, are ignored by the race estimator and Garmin run-matching, and survive plan rebuilds and weekly auto-updates.",
+    ],
+  },
+  {
     date: "2026-07-31",
     title: "Changing a workout's type updates its paces",
     tag: "Improved",

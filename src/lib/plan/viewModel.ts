@@ -1,4 +1,4 @@
-import type { Phase, RaceType, WorkoutType } from "@/db/schema";
+import type { CrossActivity, Phase, RaceType, WorkoutType } from "@/db/schema";
 import type { WorkoutSegment } from "./types";
 
 export interface DayVM {
@@ -11,6 +11,11 @@ export interface DayVM {
   paceLowSPerKm: number | null;
   paceHighSPerKm: number | null;
   segments: WorkoutSegment[] | null;
+  /** Cross-training replacement: activity + prescribed duration. */
+  crossActivity: CrossActivity | null;
+  plannedDurationS: number | null;
+  /** The original run snapshot exists, so this session can be restored. */
+  canRestore: boolean;
   description: string;
   completed: boolean;
   missed: boolean;
@@ -51,12 +56,17 @@ export interface PlanVM {
   weeks: WeekVM[];
 }
 
-/** Distance credited for a completed workout (actual if recorded, else planned). */
+/**
+ * Distance credited for a completed workout (actual if recorded, else
+ * planned). Cross-training never credits distance — bike/pool volume isn't
+ * run volume.
+ */
 export function creditedKm(d: {
   completed: boolean;
   actualDistanceKm: number | null;
   distanceKm: number;
+  type?: WorkoutType;
 }): number {
-  if (!d.completed) return 0;
+  if (!d.completed || d.type === "cross_train") return 0;
   return d.actualDistanceKm ?? d.distanceKm;
 }

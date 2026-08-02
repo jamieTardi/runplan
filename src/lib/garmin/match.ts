@@ -58,7 +58,8 @@ export function matchActivities(
 ): ActivityMatch[] {
   const candidatesByDate = new Map<string, MatchableWorkout[]>();
   for (const w of workouts) {
-    if (w.completed || w.type === "rest" || w.type === "strength") continue;
+    // Cross-training days are excluded too: a bike ride is never a "run done".
+    if (w.completed || w.type === "rest" || w.type === "strength" || w.type === "cross_train") continue;
     const list = candidatesByDate.get(w.dateISO) ?? [];
     list.push(w);
     candidatesByDate.set(w.dateISO, list);

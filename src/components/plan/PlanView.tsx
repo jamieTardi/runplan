@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CalendarOff, CalendarSync, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
+import { Bike, CalendarClock, CalendarOff, CalendarSync, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -10,6 +10,7 @@ import { PHASE_META, raceLabel, softBg } from "@/lib/planMeta";
 import { creditedKm, type PlanVM, type WeekVM } from "@/lib/plan/viewModel";
 import { distanceIn, formatDuration, formatPace, formatPaceRange, type Unit } from "@/lib/units";
 import { EditWorkoutDialog, type WorkoutPatch } from "./EditWorkoutDialog";
+import { CrossTrainDialog } from "./CrossTrainDialog";
 import { EditPlanDialog } from "./EditPlanDialog";
 import { GapDialog } from "./GapDialog";
 import { NextRaceDialog } from "./NextRaceDialog";
@@ -40,6 +41,7 @@ export function PlanView({
   const [editId, setEditId] = useState<string | null>(null);
   const [editPlanOpen, setEditPlanOpen] = useState(false);
   const [gapOpen, setGapOpen] = useState(false);
+  const [crossOpen, setCrossOpen] = useState(false);
   const [refreshOpen, setRefreshOpen] = useState(false);
   const [nextRaceOpen, setNextRaceOpen] = useState(false);
   const [locked, setLocked] = useState(initial.locked);
@@ -206,6 +208,9 @@ export function PlanView({
             <button className="btn btn-ghost" onClick={() => setGapOpen(true)}>
               <CalendarOff size={16} /> <span className="hidden sm:inline">Life happens</span>
             </button>
+            <button className="btn btn-ghost" onClick={() => setCrossOpen(true)} title="Injured? Swap runs for like-for-like bike/pool sessions">
+              <Bike size={16} /> <span className="hidden sm:inline">Cross-train</span>
+            </button>
             <button className="btn btn-ghost" onClick={() => setRefreshOpen(true)}>
               <RefreshCw size={16} /> <span className="hidden sm:inline">Update workouts</span>
             </button>
@@ -332,6 +337,7 @@ export function PlanView({
         />
       )}
       <GapDialog planId={initial.id} unit={unit} open={gapOpen} onOpenChange={setGapOpen} />
+      <CrossTrainDialog planId={initial.id} open={crossOpen} onOpenChange={setCrossOpen} />
       <NextRaceDialog
         planId={initial.id}
         prevRaceType={initial.raceType}

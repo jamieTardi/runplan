@@ -81,6 +81,10 @@ export function reconcileWeekVolume(
 ): NewWorkoutRow[] {
   if (!rows.some((r) => r.completed || r.missed)) return rows;
   if (rows.some((r) => r.type === "race")) return rows;
+  // A cross-trained week is deliberately short on run volume (the swapped
+  // sessions carry 0 km) — growing the remaining runs to cover a bike day
+  // would pile mileage onto an injured runner.
+  if (rows.some((r) => r.type === "cross_train")) return rows;
   const km = (r: NewWorkoutRow) => r.distanceKm ?? 0;
   const total = rows.reduce((a, r) => a + km(r), 0);
   let delta = Math.round(plannedVolumeKm - total);
@@ -130,6 +134,9 @@ function preservedRow(planId: string, weekId: string, prev: WorkoutRow): NewWork
     paceHighSPerKm: prev.paceHighSPerKm,
     segments: prev.segments,
     description: prev.description,
+    crossActivity: prev.crossActivity,
+    plannedDurationS: prev.plannedDurationS,
+    replacedFrom: prev.replacedFrom,
     completed: prev.completed,
     completedAt: prev.completedAt,
     missed: prev.missed,

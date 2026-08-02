@@ -3,7 +3,7 @@
 import type { DraggableAttributes, DraggableSyntheticListeners } from "@dnd-kit/core";
 import { Check, GripVertical } from "lucide-react";
 import { isoDayOfWeek } from "@/lib/plan/dates";
-import { WORKOUT_META, softBg } from "@/lib/planMeta";
+import { WORKOUT_META, softBg, workoutLabel } from "@/lib/planMeta";
 import type { DayVM } from "@/lib/plan/viewModel";
 import { formatDistance, formatPace, formatPaceRange, type Unit } from "@/lib/units";
 
@@ -79,7 +79,7 @@ export function DayCard({
             )}
           </div>
           <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ color: meta.color }}>
-            {meta.label}
+            {workoutLabel(day.type, day.crossActivity)}
           </div>
         </div>
 
@@ -126,7 +126,18 @@ export function DayCard({
         </div>
       </div>
 
-      {!isRest && day.type !== "strength" && (
+      {day.type === "cross_train" && day.plannedDurationS != null && (
+        <div className="mt-1.5">
+          <span className="text-base font-extrabold tabular-nums">
+            {Math.round(day.plannedDurationS / 60)} min
+          </span>
+          <span className="text-xs ml-1.5" style={{ color: "var(--muted)" }}>
+            by effort
+          </span>
+        </div>
+      )}
+
+      {!isRest && day.type !== "strength" && day.type !== "cross_train" && (
         <div className="mt-1.5">
           <span className="text-base font-extrabold tabular-nums">
             {formatDistance(day.distanceKm, unit, day.distanceKm % 1 === 0 ? 0 : 1)}
