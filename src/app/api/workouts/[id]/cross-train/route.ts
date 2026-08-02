@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { crossActivities, plans, workouts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteGarminWorkoutsBestEffort } from "@/lib/garmin/pushWorkout";
 import {
   isCrossConvertible,
   restoredFields,
@@ -66,6 +67,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
   const conversion = toCrossTraining(source, parsed.data.activity, WORKOUT_META[source.type].label);
-  const [updated] = await db.update(workouts).set(conversion).where(eq(workouts.id, id)).returning();
+  const [updated] = await db
+    .update(workouts)
+    .set({ ...conversion, garminWorkoutId: null })
+    .where(eq(workouts.id, id))
+    .returning();
+  // The scheduled Garmin workout still prescribes the run — pull it off the
+  // watch so an injured runner isn't told to go running.
+  if (w.garminWorkoutId) await deleteGarminWorkoutsBestEffort(user.id, [w.garminWorkoutId]);
   return NextResponse.json({ workout: updated });
 }

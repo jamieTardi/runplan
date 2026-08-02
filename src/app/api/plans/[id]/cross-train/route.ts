@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { crossActivities, plans, workouts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteGarminWorkoutsBestEffort } from "@/lib/garmin/pushWorkout";
 import {
   isCrossConvertible,
   restoredFields,
@@ -58,6 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
 
   let changed = 0;
+  const staleGarminIds: number[] = [];
   await db.transaction(async (tx) => {
     for (const w of rows) {
       if (w.completed || w.missed) continue;
@@ -72,11 +74,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const source = w.type === "cross_train" ? restoredFields(w.replacedFrom) : w;
         if (!source || !isCrossConvertible(source.type)) continue;
         const conversion = toCrossTraining(source, data.activity, WORKOUT_META[source.type].label);
-        await tx.update(workouts).set(conversion).where(eq(workouts.id, w.id));
+        await tx
+          .update(workouts)
+          .set({ ...conversion, garminWorkoutId: null })
+          .where(eq(workouts.id, w.id));
+        if (w.garminWorkoutId) staleGarminIds.push(w.garminWorkoutId);
         changed++;
       }
     }
   });
+  // Scheduled Garmin workouts for the swapped runs still prescribe running —
+  // pull them off the watch (best-effort; an offline Garmin can't fail the swap).
+  await deleteGarminWorkoutsBestEffort(user.id, staleGarminIds);
 
   return NextResponse.json(mode === "replace" ? { replaced: changed } : { restored: changed });
 }
