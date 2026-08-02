@@ -76,20 +76,23 @@ const seg = (kind: WorkoutSegment["kind"], label: string): WorkoutSegment => ({ 
 
 /**
  * Build the effort structure mirroring the run type. All efforts are
- * described by feel/heart-rate zone — never pace — and always fit inside the
- * total duration.
+ * described by feel/heart-rate zone — never pace. Quality sessions carry a
+ * fixed warm-up/cool-down, so for short runs the structure can come out
+ * longer than the run would have been — `totalMin` in the result is always
+ * the real sum of the parts, and that's what gets prescribed.
  */
 function buildStructure(
   type: WorkoutType,
   totalMin: number,
   verb: string,
-): { segments: WorkoutSegment[]; effortLine: string } {
+): { segments: WorkoutSegment[]; effortLine: string; totalMin: number } {
   // Steady aerobic sessions: one continuous effort, no warm-up ceremony.
   switch (type) {
     case "recovery":
       return {
         segments: [seg("steady", `${totalMin} min very easy ${verb} (Zone 1)`)],
         effortLine: "Keep it genuinely gentle — this replaces a recovery jog, so it should feel almost lazy.",
+        totalMin,
       };
     case "easy":
     case "general_aerobic":
@@ -99,6 +102,7 @@ function buildStructure(
         segments: [seg("steady", `${totalMin} min steady ${verb} at conversational effort (Zone 2)`)],
         effortLine:
           "Hold a conversational, all-day effort — you should be able to speak in full sentences throughout.",
+        totalMin,
       };
     case "strides":
       return {
@@ -107,6 +111,7 @@ function buildStructure(
           seg("strides", "6 × 30 s fast pick-ups (high cadence, controlled) spread through the session"),
         ],
         effortLine: "The pick-ups are quick and light, not all-out — spin fast, stay smooth.",
+        totalMin,
       };
   }
 
@@ -122,14 +127,15 @@ function buildStructure(
       // Comfortably-hard blocks totalling the time available, capped like a run tempo.
       const blockTotal = Math.min(40, mainMin);
       const half = Math.round(blockTotal / 2);
-      const main =
-        blockTotal <= 20
-          ? [seg("reps", `${blockTotal} min at threshold effort (comfortably hard, Zone 4)`)]
-          : [seg("reps", `2 × ${half} min at threshold effort (comfortably hard, Zone 4) / 5 min easy between`)];
+      const split = blockTotal > 20;
+      const main = split
+        ? [seg("reps", `2 × ${half} min at threshold effort (comfortably hard, Zone 4) / 5 min easy between`)]
+        : [seg("reps", `${blockTotal} min at threshold effort (comfortably hard, Zone 4)`)];
       return {
         segments: [warmup, ...main, cooldown],
         effortLine:
           "Threshold is the effort you could hold for about an hour when fresh — controlled discomfort, steady breathing.",
+        totalMin: warmMin + (split ? half * 2 + 5 : blockTotal) + coolMin,
       };
     }
     case "vo2": {
@@ -137,6 +143,7 @@ function buildStructure(
       return {
         segments: [warmup, seg("reps", `${reps} × 3 min hard (Zone 5) / 3 min easy ${verb}`), cooldown],
         effortLine: "Hard means close to maximal aerobic effort — breathing deep by the end of each rep.",
+        totalMin: warmMin + reps * 6 + coolMin,
       };
     }
     case "intervals": {
@@ -144,6 +151,7 @@ function buildStructure(
       return {
         segments: [warmup, seg("reps", `${reps} × 2 min fast (Zone 4–5) / 2 min easy ${verb}`), cooldown],
         effortLine: "Fast but repeatable — the last rep should feel like the first.",
+        totalMin: warmMin + reps * 4 + coolMin,
       };
     }
     case "marathon_pace": {
@@ -151,12 +159,14 @@ function buildStructure(
       return {
         segments: [warmup, seg("reps", `${block} min at steady race effort (strong but sustainable, Zone 3)`), cooldown],
         effortLine: "Race effort by feel: strong and purposeful, the intensity you could hold for hours.",
+        totalMin: warmMin + block + coolMin,
       };
     }
     default:
       return {
         segments: [seg("steady", `${totalMin} min steady ${verb} at conversational effort (Zone 2)`)],
         effortLine: "Hold a comfortable aerobic effort throughout.",
+        totalMin,
       };
   }
 }
@@ -167,8 +177,11 @@ function buildStructure(
  */
 export function toCrossTraining(w: CrossSource, activity: CrossActivity, typeLabel: string): CrossConversion {
   const meta = CROSS_ACTIVITY_META[activity];
-  const totalMin = estimatedRunDurationMin(w);
-  const { segments, effortLine } = buildStructure(w.type, totalMin, meta.verb);
+  const { segments, effortLine, totalMin } = buildStructure(
+    w.type,
+    estimatedRunDurationMin(w),
+    meta.verb,
+  );
   return {
     type: "cross_train",
     crossActivity: activity,
