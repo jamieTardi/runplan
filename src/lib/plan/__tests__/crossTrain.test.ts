@@ -74,6 +74,21 @@ describe("toCrossTraining", () => {
     const c = toCrossTraining(run({ type: "threshold" }), "bike", "Threshold");
     expect(c.segments.map((s) => s.kind)).toEqual(["warmup", "reps", "cooldown"]);
     expect(c.segments[1].label).toContain("threshold effort");
+    // 60 min run → 2 × 18 min blocks + 5 min between + 15/10 warm/cool = 66 min,
+    // and the prescribed duration is the real sum of the parts.
+    expect(c.plannedDurationS).toBe(66 * 60);
+    expect(c.description).toContain("Bike 66 min");
+  });
+
+  it("short quality runs prescribe the structure's true total, not the run's", () => {
+    // ~20 min threshold run: warm-up + 12 min block + cool-down = 37 min.
+    const c = toCrossTraining(
+      run({ type: "threshold", distanceKm: 5, paceLowSPerKm: 240, paceHighSPerKm: 240 }),
+      "bike",
+      "Threshold",
+    );
+    expect(c.plannedDurationS).toBe(37 * 60);
+    expect(c.description).toContain("Bike 37 min");
   });
 
   it("VO2 runs become hard/easy repeats that fit the time available", () => {
