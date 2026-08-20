@@ -9,7 +9,9 @@ import { WORKOUT_META, workoutLabel } from "@/lib/planMeta";
 import { formatDistance, formatDuration, formatPace, formatPaceRange } from "@/lib/units";
 import { isoDayOfWeek } from "@/lib/plan/dates";
 import { GarminPanel } from "@/components/workout/GarminPanel";
+import { StrengthSession } from "@/components/workout/StrengthSession";
 import { isPro } from "@/lib/billing/plan";
+import { routineForDescription } from "@/lib/plan/strength";
 import { UploadFit } from "@/components/workout/UploadFit";
 import type { WorkoutSegment } from "@/lib/plan/types";
 
@@ -39,6 +41,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const unit = user.unitPref;
   const dateISO = String(w.date).slice(0, 10);
   const segments = (w.segments ?? null) as WorkoutSegment[] | null;
+  const routine = w.type === "strength" ? routineForDescription(w.description) : null;
   const actualPace =
     w.actualDistanceKm && w.actualDurationS && w.actualDistanceKm > 0
       ? Math.round(w.actualDurationS / w.actualDistanceKm)
@@ -63,7 +66,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
             />
             {workoutLabel(w.type, w.crossActivity)} — {fmtDayDate(dateISO)}
           </h1>
-          {w.type !== "rest" && w.type !== "cross_train" && pro && (
+          {w.type !== "rest" && w.type !== "cross_train" && w.type !== "strength" && pro && (
             <a className="btn btn-ghost" href={`/api/workouts/${w.id}/fit`}>
               <Watch size={16} /> .FIT
             </a>
@@ -139,7 +142,9 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
         </section>
       </div>
 
-      {!pro ? (
+      {routine && <StrengthSession routine={routine} />}
+
+      {w.type === "strength" ? null : !pro ? (
         <section className="card p-5">
           <h2 className="font-bold mb-2">Garmin activity</h2>
           <p className="text-sm" style={{ color: "var(--faint)" }}>

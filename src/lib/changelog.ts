@@ -14,6 +14,16 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-20",
+    title: "See exactly what's in your strength sessions",
+    tag: "New",
+    items: [
+      "Opening a strength session now shows every exercise as its own card — an illustration of the movement, sets and reps, and a short form cue for doing it well.",
+      "The illustrations are simple animated figures drawn in one consistent style, so each exercise looks and feels part of the same guide. Holds like the plank stay still; moving exercises show the movement.",
+      "Respects your device's reduced-motion setting — figures stay static if you've turned animations off.",
+    ],
+  },
+  {
     date: "2026-08-02",
     title: "Injured? Swap runs for cross-training",
     tag: "New",

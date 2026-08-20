@@ -20,21 +20,98 @@ import type { PlanWeek, PlanWorkout } from "./types";
 
 export const STRENGTH_PER_WEEK = 2;
 
-type Routine = { name: string; description: string };
+/** One exercise within a routine; `id` keys into EXERCISE_ART for its figure. */
+export interface StrengthExercise {
+  id: string;
+  name: string;
+  scheme: string;
+  cue: string;
+}
+
+export type StrengthRoutine = {
+  name: string;
+  description: string;
+  exercises: StrengthExercise[];
+};
 
 // Alternating A/B keeps it varied without needing equipment or a gym.
-export const ROUTINES: Routine[] = [
+// The description string is what gets stored on workout rows — keep it stable,
+// routineForDescription matches rows back to their routine by its prefix.
+export const ROUTINES: StrengthRoutine[] = [
   {
     name: "Legs & hips",
     description:
       "Legs & hips, ~20 min: 3×12 squats, 3×8/leg walking lunges, 3×10/leg single-leg calf raises, 3×12 glute bridges. Bodyweight is plenty — stop two reps short of failure.",
+    exercises: [
+      {
+        id: "squat",
+        name: "Squats",
+        scheme: "3 × 12",
+        cue: "Sit back and down with your chest up, then drive through your heels to stand.",
+      },
+      {
+        id: "walking-lunge",
+        name: "Walking lunges",
+        scheme: "3 × 8 per leg",
+        cue: "Step forward and lower the back knee towards the floor; push off the front heel into the next step.",
+      },
+      {
+        id: "single-leg-calf-raise",
+        name: "Single-leg calf raises",
+        scheme: "3 × 10 per leg",
+        cue: "Rise slowly onto your toes and lower with control — hold a wall for balance.",
+      },
+      {
+        id: "glute-bridge",
+        name: "Glute bridges",
+        scheme: "3 × 12",
+        cue: "Squeeze your glutes to lift your hips until shoulders to knees make a straight line.",
+      },
+    ],
   },
   {
     name: "Core & stability",
     description:
       "Core & stability, ~15 min: 3×40s plank, 2×30s/side side plank, 3×10 dead bugs, 2×10/leg single-leg glute bridges. Slow and controlled beats more reps.",
+    exercises: [
+      {
+        id: "plank",
+        name: "Plank",
+        scheme: "3 × 40s hold",
+        cue: "Elbows under shoulders, straight line from head to heels — don't let the hips sag.",
+      },
+      {
+        id: "side-plank",
+        name: "Side plank",
+        scheme: "2 × 30s per side",
+        cue: "Stack your feet and lift the hips high; keep the body in one straight line.",
+      },
+      {
+        id: "dead-bug",
+        name: "Dead bugs",
+        scheme: "3 × 10",
+        cue: "Lower the opposite arm and leg slowly, keeping your lower back pressed to the floor.",
+      },
+      {
+        id: "single-leg-glute-bridge",
+        name: "Single-leg glute bridges",
+        scheme: "2 × 10 per leg",
+        cue: "One leg held out straight — lift the hips level without letting them twist.",
+      },
+    ],
   },
 ];
+
+/**
+ * Match a stored strength workout back to its routine. Descriptions are
+ * written by applyStrength from ROUTINES, so a prefix match on the routine
+ * name is enough; user-edited descriptions simply return null (callers fall
+ * back to plain text).
+ */
+export function routineForDescription(description: string | null | undefined): StrengthRoutine | null {
+  if (!description) return null;
+  return ROUTINES.find((r) => description.startsWith(r.name)) ?? null;
+}
 
 export interface StrengthOptions {
   enabled: boolean;
