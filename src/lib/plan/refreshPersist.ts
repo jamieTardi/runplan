@@ -1,13 +1,14 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { plans, workouts } from "@/db/schema";
+import { plans, weeks as weeksTable, workouts } from "@/db/schema";
 import { buildWeek } from "./buildWeek";
 import { mergePreservedRows, reconcileWeekVolume } from "./preserveRows";
 import { applyDoubles } from "./doubles";
 import { applyStrength } from "./strength";
 import { applyBeginnerNotes } from "./beginner";
 import { addDaysISO, todayISO } from "./dates";
+import { applySupportingRaces, raceWeekIndexes } from "./supportingRaces";
 import { goalPaceSecPerKm } from "./goal";
 import { planInputSchema } from "./inputSchema";
 import { RACE_DISTANCES_M, paceZones, raceDistanceM, vdotToRaceTime } from "./vdot";
@@ -78,13 +79,24 @@ export async function refreshPlan(
   const goalPace = goalPaceSecPerKm(plan.raceType, plan.goalTimeS, plan.customDistanceKm);
   const easyZones = paceZones(currentVdot);
 
+  // The season's other races (B/C) are re-applied after the weeks are rebuilt,
+  // so a refresh never quietly drops a race the runner entered.
+  const races = snapshot.success ? snapshot.data.races : [];
+  const supportingWeeks = raceWeekIndexes(
+    plan.weeks.map((w) => iso(w.startDate)),
+    races,
+  );
+
   // Tune-up placement counts race-prep weeks across the WHOLE plan, so rebuilt
   // weeks land tune-ups exactly where the original generator would have.
   const tuneupByWeekId = new Map<string, boolean>();
   let racePrepCount = 0;
-  for (const w of plan.weeks) {
+  for (const [i, w] of plan.weeks.entries()) {
     if (w.phase === "race_prep") {
-      tuneupByWeekId.set(w.id, plan.includeTuneups && racePrepCount % 3 === 1);
+      tuneupByWeekId.set(
+        w.id,
+        plan.includeTuneups && racePrepCount % 3 === 1 && !supportingWeeks.has(i),
+      );
       racePrepCount++;
     }
   }
@@ -151,20 +163,40 @@ export async function refreshPlan(
       }
     }
 
-    return { week, built, preservedByDate };
+    return { week, built, preservedByDate, qualityVdot };
   });
 
+  // Fold the supporting races back into the rebuilt weeks (race day, its
+  // mini-taper and its recovery days), exactly as generatePlan would.
+  const raced = applySupportingRaces(
+    rebuilt.map((r) => r.built),
+    races,
+    {
+      easy: easyZones,
+      weekVdots: rebuilt.map((r) => r.qualityVdot),
+      peakVolumeKm: plan.peakVolumeKm,
+    },
+  );
+
   await db.transaction(async (tx) => {
-    for (const { week, built, preservedByDate } of rebuilt) {
+    for (const [i, { week, preservedByDate }] of rebuilt.entries()) {
+      const built = raced[i];
       await tx.delete(workouts).where(eq(workouts.weekId, week.id));
       await tx
         .insert(workouts)
         .values(
           reconcileWeekVolume(
             mergePreservedRows(planId, week.id, built.workouts, preservedByDate),
-            week.plannedVolumeKm,
+            built.plannedVolumeKm,
           ),
         );
+      // A race reshapes the week it lands in, so its target follows.
+      if (built.plannedVolumeKm !== week.plannedVolumeKm) {
+        await tx
+          .update(weeksTable)
+          .set({ plannedVolumeKm: built.plannedVolumeKm, isCutback: built.isCutback })
+          .where(eq(weeksTable.id, week.id));
+      }
     }
     await tx
       .update(plans)

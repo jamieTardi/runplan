@@ -14,6 +14,26 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 /** Newest first — add new releases at the top. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-09-23",
+    title: "Plan your season, not just the goal race",
+    tag: "New",
+    items: [
+      "A plan can now carry the other races you're doing. Add them when you build the plan, or add them to a plan you're already halfway through and it rebuilds around them — a B-priority half marathon on the way to a spring marathon, a C-priority 10K five weeks out.",
+      "Your goal race is the A race and keeps its full taper. A B race is one that matters: you get a mini-taper into it (the quality work in those days is dropped and the runs shorten), then real recovery days out of it. A C race is trained through — one easy day before, straight back to work after.",
+      "Each race becomes a proper race day in the schedule, with a target time predicted from where your fitness should be that week — or your own target, if you have one in mind.",
+      "A C race landing on your long run doesn't cost the week its endurance: the missing kilometres stay as easy running straight after the race.",
+      "Weeks that already hold one of your races don't also get an invented tune-up, and your races survive weekly auto-updates, \"life happens\" rebuilds and plan edits.",
+    ],
+  },
+  {
+    date: "2026-09-23",
+    title: "Rebuilding a plan keeps the weeks you've already run",
+    tag: "Fixed",
+    items: [
+      "Editing a plan restarted it from today, so the weeks already trained — and everything logged in them — dropped off the front of the plan. Rebuilds now keep the plan's original span, and every session you'd completed, flagged missed or swapped for cross-training is re-attached with its actuals, notes and Garmin links intact.",
+    ],
+  },
+  {
     date: "2026-08-20",
     title: "See exactly what's in your strength sessions",
     tag: "New",

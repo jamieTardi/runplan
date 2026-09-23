@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { MAX_SUPPORTING_RACES, supportingRaceSchema } from "@/lib/plan/inputSchema";
 import { regeneratePlan } from "@/lib/plan/persist";
 
 // Any subset of schedule settings; merged over the plan's stored inputs.
@@ -14,6 +15,8 @@ const schema = z.object({
   includeTuneups: z.boolean().optional(),
   allowDoubles: z.boolean().optional(),
   includeStrength: z.boolean().optional(),
+  // The season's other races. Sent whole — the list replaces what's stored.
+  races: z.array(supportingRaceSchema).max(MAX_SUPPORTING_RACES).optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -23,11 +26,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid settings" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid settings" },
+      { status: 400 },
+    );
+  }
 
   try {
-    const ok = await regeneratePlan(user.id, id, parsed.data);
-    if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const result = await regeneratePlan(user.id, id, parsed.data);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("plan rebuild failed", err);

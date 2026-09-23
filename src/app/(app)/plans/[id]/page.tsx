@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { getPlanDetail } from "@/lib/plan/queries";
 import type { PlanVM } from "@/lib/plan/viewModel";
 import type { WorkoutSegment } from "@/lib/plan/types";
-import type { PlanInput } from "@/lib/plan/inputSchema";
+import { planInputSchema } from "@/lib/plan/inputSchema";
 import { PlanView } from "@/components/plan/PlanView";
 import { WorkoutGuide } from "@/components/plan/WorkoutGuide";
 import { RaceCard, type RaceCourseVM } from "@/components/plan/RaceCard";
@@ -34,6 +34,10 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       }
     : null;
 
+  // The generator inputs the plan was built from: rest day and the season's
+  // other races live here rather than in their own columns.
+  const snapshot = planInputSchema.safeParse(plan.paramsSnapshot);
+
   const vm: PlanVM = {
     id: plan.id,
     name: plan.name,
@@ -45,7 +49,8 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
     peakVolumeKm: plan.peakVolumeKm,
     daysPerWeek: plan.daysPerWeek,
     longRunDow: plan.longRunDow,
-    restDow: (plan.paramsSnapshot as PlanInput | null)?.restDow ?? null,
+    restDow: snapshot.success ? (snapshot.data.restDow ?? null) : null,
+    races: snapshot.success ? snapshot.data.races : [],
     allowDoubles: plan.allowDoubles,
     includeStrength: plan.includeStrength,
     locked: plan.locked,

@@ -1,5 +1,5 @@
 import type { CrossActivity, Phase, RaceType, WorkoutType } from "@/db/schema";
-import type { WorkoutSegment } from "./types";
+import type { SupportingRace, WorkoutSegment } from "./types";
 
 export interface DayVM {
   id: string;
@@ -53,6 +53,8 @@ export interface PlanVM {
   status: string;
   locked: boolean;
   autoUpdate: boolean;
+  /** The season's other races (B/C), as stored in the plan's input snapshot. */
+  races: SupportingRace[];
   weeks: WeekVM[];
 }
 
