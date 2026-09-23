@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/ui/Modal";
-import { todayISO } from "@/lib/plan/dates";
+import { addDaysISO, todayISO } from "@/lib/plan/dates";
+import { MIN_PLAN_DAYS } from "@/lib/plan/inputSchema";
 import { KM_PER_MI, type Unit } from "@/lib/units";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export interface PlanSettings {
   raceDate: string;
+  /** Monday the plan currently starts on. */
+  startDate: string;
   daysPerWeek: number;
   longRunDow: number;
   restDow: number | null;
@@ -37,6 +40,7 @@ export function EditPlanDialog({
   const toKm = (v: number) => (unit === "mi" ? v * KM_PER_MI : v);
 
   const [raceDate, setRaceDate] = useState(current.raceDate);
+  const [startDate, setStartDate] = useState(current.startDate);
   const [daysPerWeek, setDaysPerWeek] = useState(current.daysPerWeek);
   const [longRunDow, setLongRunDow] = useState(current.longRunDow);
   const [restDow, setRestDow] = useState<number | null>(current.restDow);
@@ -61,6 +65,7 @@ export function EditPlanDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           raceDateISO: raceDate,
+          startDateISO: startDate,
           daysPerWeek,
           longRunDow,
           restDow: daysPerWeek === 7 ? null : restDow,
@@ -91,10 +96,26 @@ export function EditPlanDialog({
       description="The schedule is rebuilt around your changes. Completed sessions are kept."
     >
       <div className="flex flex-col gap-4">
-        <div>
-          <span className="label">Race date</span>
-          <input type="date" className="input" value={raceDate} min={todayISO()} onChange={(e) => setRaceDate(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <span className="label">Plan starts</span>
+            <input
+              type="date"
+              className="input"
+              value={startDate}
+              max={addDaysISO(raceDate, -MIN_PLAN_DAYS)}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <span className="label">Race date</span>
+            <input type="date" className="input" value={raceDate} min={todayISO()} onChange={(e) => setRaceDate(e.target.value)} />
+          </div>
         </div>
+        <p className="text-xs -mt-2" style={{ color: "var(--faint)" }}>
+          Moving the start earlier lengthens the plan — training runs from that week all the way to
+          race day.
+        </p>
 
         <div>
           <span className="label">Running days per week</span>

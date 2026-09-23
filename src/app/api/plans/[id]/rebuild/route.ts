@@ -7,6 +7,7 @@ import { regeneratePlan } from "@/lib/plan/persist";
 // Any subset of schedule settings; merged over the plan's stored inputs.
 const schema = z.object({
   raceDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  startDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   restDow: z.number().int().min(1).max(7).nullable().optional(),
   longRunDow: z.number().int().min(1).max(7).optional(),
   daysPerWeek: z.number().int().min(3).max(7).optional(),

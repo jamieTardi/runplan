@@ -15,6 +15,17 @@ export const CHANGELOG_SEEN_KEY = "runplan-changelog-seen";
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-09-23",
+    title: "Plans can run a whole season",
+    tag: "New",
+    items: [
+      "New \"Start training\" date in the plan builder, defaulting to today: a race next May now gives you a plan that starts this week rather than one that sits idle until January. Plans can run up to 52 weeks.",
+      "A season-length plan isn't just a longer block. The threshold and race-specific work stay a normal build at the sharp end — the extra months go into aerobic base first, so you get a base phase and then the build you'd recognise.",
+      "Your B races are planned for, not just slotted in: two threshold weeks sharpen you into one, its own week backs off, the week after becomes a recovery week, and the volume steps back up gradually instead of jumping straight to the season's biggest week.",
+      "Edit plan gained the same start date, so you can lengthen a plan you're already running by starting it earlier.",
+    ],
+  },
+  {
+    date: "2026-09-23",
     title: "Plan your season, not just the goal race",
     tag: "New",
     items: [

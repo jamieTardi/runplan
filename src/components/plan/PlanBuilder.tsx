@@ -14,7 +14,8 @@ import {
 } from "@/lib/plan/beginner";
 import { RACE_TYPE_LABEL } from "@/lib/planMeta";
 import { addDaysISO, diffDaysISO } from "@/lib/plan/dates";
-import { MAX_SUPPORTING_RACES, MIN_RACE_LEAD_DAYS } from "@/lib/plan/inputSchema";
+import { MAX_SUPPORTING_RACES, MIN_PLAN_DAYS, MIN_RACE_LEAD_DAYS } from "@/lib/plan/inputSchema";
+import { MAX_WEEKS, planWeeksBetween } from "@/lib/plan/periodize";
 import {
   KM_PER_MI,
   formatDistance,
@@ -85,6 +86,9 @@ export function PlanBuilder({
   const [customDist, setCustomDist] = useState("");
   const [goalTime, setGoalTime] = useState("2:59:00");
   const [raceDate, setRaceDate] = useState(defaultRaceDateISO);
+  // Training starts today unless the runner says otherwise — a race a long way
+  // out becomes a longer plan, not a plan that sits idle until January.
+  const [startDate, setStartDate] = useState(todayISO);
   const [fitnessMode, setFitnessMode] = useState<"race" | "estimate">("race");
   const [recentRaceType, setRecentRaceType] = useState<Exclude<RaceType, "custom">>("half");
   const [recentTime, setRecentTime] = useState("1:25:00");
@@ -120,6 +124,24 @@ export function PlanBuilder({
         return { input: null, plan: null, buildError: "Choose a race date" };
       }
 
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        return { input: null, plan: null, buildError: "Choose a start date" };
+      }
+      if (diffDaysISO(raceDate, startDate) < MIN_PLAN_DAYS) {
+        return {
+          input: null,
+          plan: null,
+          buildError: "Leave at least three weeks between starting and race day",
+        };
+      }
+      if (planWeeksBetween(startDate, raceDate) > MAX_WEEKS) {
+        return {
+          input: null,
+          plan: null,
+          buildError: `A plan can run for at most ${MAX_WEEKS} weeks — pick a later start date`,
+        };
+      }
+
       const { races, error: racesError } = draftsToRaces(raceDrafts, unit);
       if (racesError) return { input: null, plan: null, buildError: racesError };
       if (races.some((r) => diffDaysISO(raceDate, r.dateISO) < MIN_RACE_LEAD_DAYS)) {
@@ -153,6 +175,7 @@ export function PlanBuilder({
           goalTimeS,
           raceDateISO: raceDate,
           todayISO,
+          startDateISO: startDate,
           currentFitness,
           startVolumeKm,
           peakVolumeKm: beginnerPeakKm(raceType, startVolumeKm),
@@ -203,6 +226,7 @@ export function PlanBuilder({
         goalTimeS,
         raceDateISO: raceDate,
         todayISO,
+        startDateISO: startDate,
         currentFitness,
         startVolumeKm,
         peakVolumeKm: Math.max(peakVolumeKm, startVolumeKm),
@@ -221,7 +245,7 @@ export function PlanBuilder({
   }, [
     mode, name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
     easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, allowDoubles, includeStrength,
-    tier, simpleDays, simpleGoalMode, simpleGoalTime, simpleStrength, unit, todayISO, raceDrafts,
+    tier, simpleDays, simpleGoalMode, simpleGoalTime, simpleStrength, unit, todayISO, raceDrafts, startDate,
   ]);
 
   async function submit() {
@@ -323,9 +347,25 @@ export function PlanBuilder({
               </Field>
             </div>
           )}
-          <Field label="Race date">
-            <input type="date" className="input" value={raceDate} min={todayISO} onChange={(e) => setRaceDate(e.target.value)} />
-          </Field>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field label="Race date">
+              <input type="date" className="input" value={raceDate} min={todayISO} onChange={(e) => setRaceDate(e.target.value)} />
+            </Field>
+            <Field label="Start training">
+              <input
+                type="date"
+                className="input"
+                value={startDate}
+                min={todayISO}
+                max={addDaysISO(raceDate, -MIN_PLAN_DAYS)}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </Field>
+          </div>
+          <p className="text-xs -mt-1" style={{ color: "var(--faint)" }}>
+            Training runs from the Monday of your start week through to race day. A race a long way
+            off just means a longer plan — you get a base phase first, then the build.
+          </p>
         </Section>
 
         {mode === "simple" ? (
@@ -497,7 +537,7 @@ export function PlanBuilder({
             value={raceDrafts}
             onChange={setRaceDrafts}
             unit={unit}
-            minDateISO={todayISO}
+            minDateISO={startDate}
             maxDateISO={addDaysISO(raceDate, -MIN_RACE_LEAD_DAYS)}
             max={MAX_SUPPORTING_RACES}
           />
@@ -522,7 +562,12 @@ export function PlanBuilder({
                 </span>
               </div>
               <div className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>
-                Peaks at {formatDistance(plan.summary.peakVolumeKm, unit, 0)}/wk
+                Starts{" "}
+                {new Date(plan.weeks[0].startDateISO).toLocaleDateString(undefined, {
+                  day: "numeric",
+                  month: "long",
+                })}{" "}
+                · peaks at {formatDistance(plan.summary.peakVolumeKm, unit, 0)}/wk
               </div>
             </div>
 

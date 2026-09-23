@@ -10,7 +10,7 @@ import {
   goalVdot as computeGoalVdot,
 } from "./goal";
 import { buildBridgeWeekPlans, buildWeekPlans } from "./periodize";
-import { applySupportingRaces, raceWeekIndexes } from "./supportingRaces";
+import { applySupportingRaces, raceWeekIndexes, shapeWeeksForRaces } from "./supportingRaces";
 import type { GeneratedPlan, GenerateInput, PlanWeek } from "./types";
 import { paceZones, raceDistanceM } from "./vdot";
 import { raceLabel } from "@/lib/planMeta";
@@ -25,7 +25,10 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
   // Continuation plans bridge from the previous race (recovery → build →
   // taper) instead of ramping up from scratch; the start date comes from the
   // previous race day, not from today.
-  const weekPlans = input.continuation
+  // A chosen start date is honoured exactly, so "I want to start now" gives a
+  // full season rather than a block that begins in three months.
+  const startRefISO = input.startDateISO ?? input.todayISO;
+  const rawWeekPlans = input.continuation
     ? buildBridgeWeekPlans(
         input.continuation.prevRaceDateISO,
         input.continuation.prevRaceDistanceKm,
@@ -33,11 +36,15 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
         input.peakVolumeKm,
       )
     : buildWeekPlans(
-        input.todayISO,
+        startRefISO,
         input.raceDateISO,
         input.startVolumeKm,
         input.peakVolumeKm,
+        { startFixed: Boolean(input.startDateISO) },
       );
+  // The season's B races are mini-peaks: sharpen in, back off for them, take an
+  // easy week out. Done before any week is drawn so the whole ramp knows.
+  const weekPlans = shapeWeeksForRaces(rawWeekPlans, input.races);
   const totalWeeks = weekPlans.length;
   const feasibility = assessFeasibility(currentVdot, goalVdot, totalWeeks);
 
