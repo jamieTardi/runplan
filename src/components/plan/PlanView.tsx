@@ -413,6 +413,7 @@ export function PlanView({
         unit={unit}
         current={{
           raceDate: initial.raceDate,
+          startDate: weeks[0]?.startDate ?? today,
           daysPerWeek: initial.daysPerWeek,
           longRunDow: initial.longRunDow,
           restDow: initial.restDow,

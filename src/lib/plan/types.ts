@@ -37,6 +37,13 @@ export interface GenerateInput {
   raceDateISO: string;
   /** Reference "start" date (defaults to today). Plan begins the Monday of this week. */
   todayISO: string;
+  /**
+   * The day the runner wants training to start. When set it is honoured
+   * exactly — the plan runs from the Monday of that week to race day, however
+   * long that is (up to MAX_WEEKS) — instead of being clamped into a standard
+   * block that starts later. Falls back to `todayISO`.
+   */
+  startDateISO?: string | null;
   currentFitness: CurrentFitness;
   startVolumeKm: number;
   peakVolumeKm: number;

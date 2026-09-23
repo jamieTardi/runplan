@@ -58,7 +58,9 @@ export function assessFeasibility(
   totalWeeks: number,
 ): Feasibility {
   const gap = goal - current;
-  const achievableGain = totalWeeks / 5; // ~1 VDOT per 5 weeks
+  // ~1 VDOT per 5 weeks of consistent training, but gains flatten out — a
+  // season-long plan doesn't make a 10-point jump "realistic".
+  const achievableGain = Math.min(totalWeeks / 5, 7);
   let verdict: FeasibilityVerdict;
   let message: string;
 

@@ -3,6 +3,7 @@ import { raceLabel } from "@/lib/planMeta";
 import { formatDuration } from "@/lib/units";
 import type { PlanWeek, PlanWorkout, RacePriority, SupportingRace } from "./types";
 import { raceDistanceM, vdotToRaceTime, type PaceZones } from "./vdot";
+import type { WeekPlan } from "./periodize";
 
 /**
  * Supporting races — the B and C races a season actually contains.
@@ -36,6 +37,9 @@ export interface RaceImpact {
  * run — below this it's noise, and the week can carry the shortfall.
  */
 const MIN_ADD_ON_KM = 3;
+
+/** Volume a race has to take out of a week before it counts as a cutback. */
+const CUTBACK_DROP = 0.08;
 
 /** Distance beyond which a race needs a proper recovery block, not just a day. */
 const LONG_RACE_KM = 20;
@@ -92,6 +96,82 @@ export function raceWeekIndexes(
     for (let d = -taperDays; d <= recoveryDays; d++) {
       const i = weekIndexForDate(weekStartsISO, addDaysISO(race.dateISO, d));
       if (i >= 0) out.add(i);
+    }
+  }
+  return out;
+}
+
+/** Volume a B race's own week keeps — the rest is the mini-taper. */
+const B_RACE_WEEK_FACTOR = 0.8;
+/** Volume the week after a B race keeps while the legs come back. */
+const B_RECOVERY_WEEK_FACTOR = 0.8;
+/** Most a week may grow on the way back from a B race's recovery week. */
+const RETURN_GROWTH_CAP = 1.25;
+/** Weeks of threshold work a B race earns on the way in. */
+const B_SHARPEN_WEEKS = 2;
+
+/**
+ * Shape the season's *weeks* around the B races, before any day is drawn.
+ *
+ * The day-level pass below handles the days either side of a race; this is the
+ * periodisation answer to the same question. A race worth tapering for is a
+ * mini-peak in the season: you sharpen into it, you back the volume off for it,
+ * and you take an easy week out of it before the build resumes. Without this a
+ * B race sits in the middle of whatever the ramp was doing — typically a peak
+ * week straight after racing a half marathon.
+ *
+ * C races are trained through by definition, so the ramp ignores them.
+ */
+export function shapeWeeksForRaces(
+  weeks: WeekPlan[],
+  races: SupportingRace[] | undefined,
+): WeekPlan[] {
+  if (!races?.length || weeks.length === 0) return weeks;
+  const starts = weeks.map((w) => w.startDateISO);
+  const out = weeks.map((w) => ({ ...w }));
+  const goalWeek = out.length - 1;
+
+  for (const race of races) {
+    if (race.priority !== "b") continue;
+    const wi = weekIndexForDate(starts, race.dateISO);
+    // Races in (or after) the goal-race week are the A race's business.
+    if (wi < 0 || wi >= goalWeek) continue;
+
+    // Sharpen into it: base weeks before a B race earn threshold work.
+    for (let i = Math.max(0, wi - B_SHARPEN_WEEKS); i < wi; i++) {
+      if (out[i].phase === "endurance") out[i] = { ...out[i], phase: "lt" };
+    }
+
+    // Its own week backs off, and isn't also the season's peak.
+    out[wi] = {
+      ...out[wi],
+      plannedVolumeKm: round1(out[wi].plannedVolumeKm * B_RACE_WEEK_FACTOR),
+      isCutback: true,
+    };
+
+    // The week after is recovery — easy running only (buildWeek knows the
+    // phase), unless we're already into the goal race's taper. Sized against
+    // the race week so a ramp cutback landing here doesn't stack two
+    // reductions and leave a near-empty week.
+    const ri = wi + 1;
+    if (ri < goalWeek && out[ri].phase !== "taper") {
+      out[ri] = {
+        ...out[ri],
+        phase: "recovery",
+        plannedVolumeKm: round1(
+          Math.min(out[ri].plannedVolumeKm, out[wi].plannedVolumeKm) * B_RECOVERY_WEEK_FACTOR,
+        ),
+        isCutback: true,
+      };
+
+      // Step back up instead of leaping: without this the ramp resumes where
+      // it left off, so an easy week is followed by the season's biggest one.
+      // Weeks are only ever capped, never raised, so the peak still lands.
+      for (let i = ri + 1; i <= goalWeek; i++) {
+        const cap = round1(out[i - 1].plannedVolumeKm * RETURN_GROWTH_CAP);
+        if (out[i].plannedVolumeKm <= cap) break; // the ramp has caught up
+        out[i] = { ...out[i], plannedVolumeKm: cap, isCutback: false };
+      }
     }
   }
   return out;
@@ -253,13 +333,15 @@ export function applySupportingRaces(
   }
 
   // A race reshapes the weeks it touches, so their volume target follows the
-  // days they now contain instead of the ramp they were drawn from.
+  // days they now contain instead of the ramp they were drawn from. Only a
+  // real dent counts as a cutback week — a recovery day clipping the edge of a
+  // week shouldn't relabel it.
   for (const wi of touched) {
     const sum = round1(out[wi].workouts.reduce((a, d) => a + d.distanceKm, 0));
     out[wi] = {
       ...out[wi],
       plannedVolumeKm: sum,
-      isCutback: out[wi].isCutback || sum < weeks[wi].plannedVolumeKm,
+      isCutback: out[wi].isCutback || sum <= weeks[wi].plannedVolumeKm * (1 - CUTBACK_DROP),
     };
   }
   return out;

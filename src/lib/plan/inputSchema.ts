@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { BRIDGE_MIN_WEEKS, MAX_WEEKS, bridgeTotalWeeks } from "./periodize";
-import { diffDaysISO } from "./dates";
+import { BRIDGE_MIN_WEEKS, MAX_WEEKS, bridgeTotalWeeks, planWeeksBetween } from "./periodize";
+import { diffDaysISO, mondayOfWeekISO } from "./dates";
 
 export const raceTypeEnum = z.enum(["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"]);
 /** Distances usable as a recent-race fitness marker (anything with a fixed length). */
@@ -8,6 +8,9 @@ export const knownRaceTypeEnum = z.enum(["5k", "10k", "half", "marathon", "50k",
 
 /** Priorities a supporting race can carry (the goal race is the A race). */
 export const racePriorityEnum = z.enum(["b", "c"]);
+
+/** Shortest run-up worth planning when the runner picks their own start date. */
+export const MIN_PLAN_DAYS = 21;
 
 /** How far before the goal race another race has to sit to be worth planning. */
 export const MIN_RACE_LEAD_DAYS = 7;
@@ -43,6 +46,8 @@ export const planInputSchema = z.object({
   customDistanceKm: z.number().positive().min(1).max(500).nullable().optional(),
   goalTimeS: z.number().int().positive().max(48 * 3600),
   raceDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date"),
+  /** When training starts. Omitted → today, clamped into a standard block. */
+  startDateISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date").nullish(),
   currentFitness: z.discriminatedUnion("mode", [
     z.object({
       mode: z.literal("race"),
@@ -80,6 +85,27 @@ export const planInputSchema = z.object({
       message: "Enter a distance for your custom race",
     });
   }
+  // A continuation plan starts the Monday after the previous race, so its start
+  // date isn't the runner's to pick.
+  if (val.startDateISO && !val.continuation) {
+    if (diffDaysISO(val.raceDateISO, val.startDateISO) < MIN_PLAN_DAYS) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDateISO"],
+        message: "Leave at least three weeks between starting and race day",
+      });
+    } else if (planWeeksBetween(val.startDateISO, val.raceDateISO) > MAX_WEEKS) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDateISO"],
+        message: `A plan can run for at most ${MAX_WEEKS} weeks — pick a later start date`,
+      });
+    }
+  }
+
+  // The plan runs from the Monday of its start week; a race before that would
+  // silently vanish from the schedule.
+  const planStartISO = val.startDateISO ? mondayOfWeekISO(val.startDateISO) : null;
   const seenDates = new Set<string>();
   for (const race of val.races ?? []) {
     if (diffDaysISO(val.raceDateISO, race.dateISO) < MIN_RACE_LEAD_DAYS) {
@@ -87,6 +113,13 @@ export const planInputSchema = z.object({
         code: "custom",
         path: ["races"],
         message: `Other races need to be at least ${MIN_RACE_LEAD_DAYS} days before your goal race`,
+      });
+    }
+    if (planStartISO && race.dateISO < planStartISO) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["races"],
+        message: "That race is before your plan starts — move it, or start the plan earlier",
       });
     }
     if (seenDates.has(race.dateISO)) {

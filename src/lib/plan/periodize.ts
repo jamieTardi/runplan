@@ -1,8 +1,16 @@
 import type { Phase } from "@/db/schema";
 import { addDaysISO, diffDaysISO, mondayOfWeekISO } from "./dates";
 
+/** Shortest plan we'll build when no start date is chosen. */
 export const MIN_WEEKS = 8;
-export const MAX_WEEKS = 24;
+/** Longest plan we'll build — a whole season, not just a race block. */
+export const MAX_WEEKS = 52;
+/**
+ * Longest race-specific block. Threshold and race-pace work can't sensibly run
+ * for months, so a season-length plan keeps a normal block at the end and
+ * spends everything before it on aerobic base.
+ */
+export const MAX_BLOCK_WEEKS = 18;
 
 export interface WeekPlan {
   weekIndex: number;
@@ -12,15 +20,28 @@ export interface WeekPlan {
   startDateISO: string; // Monday of the training week
 }
 
+/** Whole Mon–Sun training weeks between a start date and race day, unclamped. */
+export function planWeeksBetween(startISO: string, raceDateISO: string): number {
+  return (
+    Math.floor(diffDaysISO(mondayOfWeekISO(raceDateISO), mondayOfWeekISO(startISO)) / 7) + 1
+  );
+}
+
 /**
- * Number of training weeks between the start reference and the race, aligned to
- * whole Mon–Sun weeks and clamped to a sensible range. When the calendar allows
- * more than MAX_WEEKS, the plan simply starts later.
+ * Length of the plan in whole Mon–Sun weeks.
+ *
+ * With a start date the runner chose, that date is the answer (capped at
+ * MAX_WEEKS): if they want to start training today for a race nine months out,
+ * the plan runs from today. Without one the span is clamped into a sensible
+ * block and a race further out than MAX_WEEKS simply starts later.
  */
-export function computeTotalWeeks(todayISO: string, raceDateISO: string): number {
-  const firstMonday = mondayOfWeekISO(todayISO);
-  const raceMonday = mondayOfWeekISO(raceDateISO);
-  const weeks = Math.floor(diffDaysISO(raceMonday, firstMonday) / 7) + 1;
+export function computeTotalWeeks(
+  startRefISO: string,
+  raceDateISO: string,
+  opts: { startFixed?: boolean } = {},
+): number {
+  const weeks = planWeeksBetween(startRefISO, raceDateISO);
+  if (opts.startFixed) return Math.max(1, Math.min(MAX_WEEKS, weeks));
   return Math.max(MIN_WEEKS, Math.min(MAX_WEEKS, weeks));
 }
 
@@ -34,9 +55,12 @@ export function firstMondayISO(raceDateISO: string, totalWeeks: number): string 
 export function assignPhases(totalWeeks: number): Phase[] {
   const taperLen = totalWeeks >= 12 ? 3 : totalWeeks >= 10 ? 2 : 1;
   const build = totalWeeks - taperLen;
-  const endurance = Math.max(1, Math.round(build * 0.4));
-  const lt = Math.max(1, Math.round(build * 0.3));
-  const racePrep = Math.max(1, build - endurance - lt);
+  // The sharp end of the plan keeps the standard proportions; a longer season
+  // doesn't stretch them, it just gets more base first.
+  const block = Math.min(build, MAX_BLOCK_WEEKS);
+  const lt = Math.max(1, Math.round(block * 0.3));
+  const racePrep = Math.max(1, block - Math.max(1, Math.round(block * 0.4)) - lt);
+  const endurance = Math.max(1, build - lt - racePrep);
 
   const phases: Phase[] = [];
   for (let i = 0; i < endurance; i++) phases.push("endurance");
@@ -49,6 +73,9 @@ export function assignPhases(totalWeeks: number): Phase[] {
   while (phases.length < totalWeeks) phases.splice(phases.indexOf("race_prep"), 0, "endurance");
   return phases;
 }
+
+/** How much a recovery/cutback week takes off the ramp. */
+export const CUTBACK_FACTOR = 0.82;
 
 /**
  * Weekly volume targets: a 3-build / 1-cutback ramp from start to peak across the
@@ -69,7 +96,7 @@ export function volumeRamp(
     let isCutback = false;
     // Every 4th week is a recovery/cutback week (except the final peak week).
     if (i > 0 && (i + 1) % 4 === 0 && i !== build - 1) {
-      vol *= 0.82;
+      vol *= CUTBACK_FACTOR;
       isCutback = true;
     }
     if (i === build - 1) vol = peakKm; // guarantee a clean peak
@@ -163,12 +190,13 @@ export function buildBridgeWeekPlans(
 }
 
 export function buildWeekPlans(
-  todayISO: string,
+  startRefISO: string,
   raceDateISO: string,
   startKm: number,
   peakKm: number,
+  opts: { startFixed?: boolean } = {},
 ): WeekPlan[] {
-  const totalWeeks = computeTotalWeeks(todayISO, raceDateISO);
+  const totalWeeks = computeTotalWeeks(startRefISO, raceDateISO, opts);
   const phases = assignPhases(totalWeeks);
   const ramp = volumeRamp(phases, startKm, peakKm);
   const start = firstMondayISO(raceDateISO, totalWeeks);
