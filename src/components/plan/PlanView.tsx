@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, CalendarClock, CalendarOff, CalendarSync, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
+import { Bike, CalendarClock, CalendarOff, CalendarSync, ChevronDown, Download, Flag, Lock, LockOpen, RefreshCw, Trash2, Trophy } from "lucide-react";
 import { diffDaysISO, todayISO } from "@/lib/plan/dates";
 import { goalPaceSecPerKm } from "@/lib/plan/goal";
 import { paceZones } from "@/lib/plan/vdot";
@@ -14,6 +14,7 @@ import { CrossTrainDialog } from "./CrossTrainDialog";
 import { EditPlanDialog } from "./EditPlanDialog";
 import { GapDialog } from "./GapDialog";
 import { NextRaceDialog } from "./NextRaceDialog";
+import { RacesDialog } from "./RacesDialog";
 import { RefreshPlanDialog } from "./RefreshPlanDialog";
 import { WeekDayGrid } from "./WeekDayGrid";
 import { VolumeChart } from "./VolumeChart";
@@ -44,6 +45,7 @@ export function PlanView({
   const [crossOpen, setCrossOpen] = useState(false);
   const [refreshOpen, setRefreshOpen] = useState(false);
   const [nextRaceOpen, setNextRaceOpen] = useState(false);
+  const [racesOpen, setRacesOpen] = useState(false);
   const [locked, setLocked] = useState(initial.locked);
   const [lockBusy, setLockBusy] = useState(false);
   const [autoUpdate, setAutoUpdate] = useState(initial.autoUpdate);
@@ -214,6 +216,13 @@ export function PlanView({
             <button className="btn btn-ghost" onClick={() => setRefreshOpen(true)}>
               <RefreshCw size={16} /> <span className="hidden sm:inline">Update workouts</span>
             </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => setRacesOpen(true)}
+              title="Other races in your season — add a B or C race and the plan rebuilds around it"
+            >
+              <Trophy size={16} /> <span className="hidden sm:inline">Other races</span>
+            </button>
             <button className="btn btn-ghost" onClick={() => setNextRaceOpen(true)}>
               <Flag size={16} /> <span className="hidden sm:inline">Next race</span>
             </button>
@@ -272,6 +281,37 @@ export function PlanView({
           <Pace label="Interval" value={formatPace(goalZ.interval, unit)} />
           <Pace label="Recovery" value={formatPace(easyZ.recovery, unit)} />
         </div>
+
+        {/* the rest of the season */}
+        {initial.races.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <span className="text-[11px] font-semibold" style={{ color: "var(--faint)" }}>
+              ALSO RACING
+            </span>
+            {[...initial.races]
+              .sort((a, b) => a.dateISO.localeCompare(b.dateISO))
+              .map((r) => (
+                <button
+                  key={r.id}
+                  className="inline-flex items-baseline gap-1.5 rounded-lg px-2.5 py-1.5 text-xs"
+                  style={{ background: "var(--surface-2)" }}
+                  onClick={() => setRacesOpen(true)}
+                  title="Edit your other races"
+                >
+                  <span
+                    className="font-bold"
+                    style={{ color: r.priority === "b" ? "var(--primary)" : "var(--faint)" }}
+                  >
+                    {r.priority.toUpperCase()}
+                  </span>
+                  <span className="font-semibold">
+                    {r.name?.trim() || raceLabel(r.raceType, r.customDistanceKm, unit)}
+                  </span>
+                  <span style={{ color: "var(--muted)" }}>{shortDate(r.dateISO)}</span>
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Volume overview */}
@@ -349,6 +389,16 @@ export function PlanView({
         unit={unit}
         open={nextRaceOpen}
         onOpenChange={setNextRaceOpen}
+      />
+      <RacesDialog
+        planId={initial.id}
+        unit={unit}
+        races={initial.races}
+        goalRaceLabel={raceLabel(initial.raceType, initial.customDistanceKm, unit)}
+        goalRaceDateISO={initial.raceDate}
+        planStartISO={weeks[0]?.startDate ?? today}
+        open={racesOpen}
+        onOpenChange={setRacesOpen}
       />
       <RefreshPlanDialog
         planId={initial.id}
@@ -463,6 +513,11 @@ function Pace({ label, value }: { label: string; value: string }) {
       <span className="font-bold tabular-nums">{value}</span>
     </span>
   );
+}
+
+/** "14 Mar" — compact date for the season strip. */
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
 
 // End date fallback for the last week (7 days after its start).

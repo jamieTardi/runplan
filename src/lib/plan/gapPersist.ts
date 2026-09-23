@@ -7,6 +7,7 @@ import { applyDoubles } from "./doubles";
 import { applyStrength } from "./strength";
 import { applyBeginnerNotes } from "./beginner";
 import { addDaysISO, diffDaysISO } from "./dates";
+import { applySupportingRaces, raceWeekIndexes } from "./supportingRaces";
 import {
   gapSeverity,
   rebuildVolumes,
@@ -121,13 +122,24 @@ export async function applyGapAndRebuild(
   const goalPace = goalPaceSecPerKm(plan.raceType, plan.goalTimeS, plan.customDistanceKm);
   const easyZones = paceZones(plan.currentVdot);
 
+  // The season's other races (B/C) go back into the rebuilt weeks, so a break
+  // never quietly deletes a race the runner has entered.
+  const races = snapshot.success ? snapshot.data.races : [];
+  const supportingWeeks = raceWeekIndexes(
+    plan.weeks.map((w) => iso(w.startDate)),
+    races,
+  );
+
   // Tune-up placement counts race-prep weeks across the WHOLE plan, so rebuilt
   // weeks land tune-ups exactly where the original generator would have.
   const tuneupByWeekId = new Map<string, boolean>();
   let racePrepCount = 0;
-  for (const w of plan.weeks) {
+  for (const [i, w] of plan.weeks.entries()) {
     if (w.phase === "race_prep") {
-      tuneupByWeekId.set(w.id, plan.includeTuneups && racePrepCount % 3 === 1);
+      tuneupByWeekId.set(
+        w.id,
+        plan.includeTuneups && racePrepCount % 3 === 1 && !supportingWeeks.has(i),
+      );
       racePrepCount++;
     }
   }
@@ -155,7 +167,7 @@ export async function applyGapAndRebuild(
   const staleGarminIds: number[] = [];
 
   // 4. Build the replacement weeks.
-  const rebuilt = futureWeeks.map((week, i) => {
+  const staged = futureWeeks.map((week, i) => {
     const progress = totalWeeks > 1 ? week.weekIndex / (totalWeeks - 1) : 1;
     const eased = progress * progress * (3 - 2 * progress);
     const qualityVdot = plan.currentVdot + (plan.goalVdot - plan.currentVdot) * eased;
@@ -203,11 +215,6 @@ export async function applyGapAndRebuild(
     if (i < easyWeeksLeft) {
       built = { ...built, workouts: stripQualityForReturn(built.workouts, easyZones) };
     }
-    const volume = Math.min(
-      newVols[i],
-      Math.round(built.workouts.reduce((a, d) => a + d.distanceKm, 0) * 10) / 10,
-    );
-
     // Anything already done (or already flagged missed) in a rebuilt week is
     // re-attached by date — including Garmin links and original timestamps.
     // Cross-training swaps are deliberate injury substitutions and survive too.
@@ -222,7 +229,30 @@ export async function applyGapAndRebuild(
       }
     }
 
-    return { week, volume, built, preservedByDate };
+    return { week, built, preservedByDate, qualityVdot };
+  });
+
+  // Fold the supporting races back in (race day, its mini-taper and recovery
+  // days), then let each rebuilt week's target follow the days it now holds.
+  const raced = applySupportingRaces(
+    staged.map((r) => r.built),
+    races,
+    {
+      easy: easyZones,
+      weekVdots: staged.map((r) => r.qualityVdot),
+      peakVolumeKm: plan.peakVolumeKm,
+    },
+  );
+  const rebuilt = staged.map((entry, i) => {
+    const built = raced[i];
+    return {
+      ...entry,
+      built,
+      volume: Math.min(
+        built.plannedVolumeKm,
+        Math.round(built.workouts.reduce((a, d) => a + d.distanceKm, 0) * 10) / 10,
+      ),
+    };
   });
 
   // 5. Persist everything atomically.
@@ -273,7 +303,7 @@ export async function applyGapAndRebuild(
       await tx.delete(workouts).where(eq(workouts.weekId, week.id));
       await tx
         .update(weeks)
-        .set({ plannedVolumeKm: volume })
+        .set({ plannedVolumeKm: volume, isCutback: built.isCutback })
         .where(eq(weeks.id, week.id));
       await tx
         .insert(workouts)

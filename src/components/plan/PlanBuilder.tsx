@@ -13,6 +13,8 @@ import {
   type BeginnerTierKey,
 } from "@/lib/plan/beginner";
 import { RACE_TYPE_LABEL } from "@/lib/planMeta";
+import { addDaysISO, diffDaysISO } from "@/lib/plan/dates";
+import { MAX_SUPPORTING_RACES, MIN_RACE_LEAD_DAYS } from "@/lib/plan/inputSchema";
 import {
   KM_PER_MI,
   formatDistance,
@@ -23,6 +25,7 @@ import {
   type Unit,
 } from "@/lib/units";
 import { VolumeChart } from "./VolumeChart";
+import { RaceListEditor, draftsToRaces, type RaceDraft } from "./RaceListEditor";
 
 const RACE_TYPES: RaceType[] = ["5k", "10k", "half", "marathon", "50k", "100k", "100mi", "custom"];
 // The simple builder keeps to distances a newer runner would actually pick.
@@ -94,6 +97,8 @@ export function PlanBuilder({
   const [includeTuneups, setIncludeTuneups] = useState(true);
   const [allowDoubles, setAllowDoubles] = useState(false);
   const [includeStrength, setIncludeStrength] = useState(false);
+  // The rest of the season: B and C races folded into this plan.
+  const [raceDrafts, setRaceDrafts] = useState<RaceDraft[]>([]);
   // Simple-mode answers (own defaults: 3 days, strength on, "just finish").
   const [tier, setTier] = useState<BeginnerTierKey>("casual");
   const [simpleDays, setSimpleDays] = useState(3);
@@ -113,6 +118,16 @@ export function PlanBuilder({
     try {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(raceDate)) {
         return { input: null, plan: null, buildError: "Choose a race date" };
+      }
+
+      const { races, error: racesError } = draftsToRaces(raceDrafts, unit);
+      if (racesError) return { input: null, plan: null, buildError: racesError };
+      if (races.some((r) => diffDaysISO(raceDate, r.dateISO) < MIN_RACE_LEAD_DAYS)) {
+        return {
+          input: null,
+          plan: null,
+          buildError: `Other races need to be at least ${MIN_RACE_LEAD_DAYS} days before your goal race`,
+        };
       }
 
       if (mode === "simple") {
@@ -148,6 +163,7 @@ export function PlanBuilder({
           allowDoubles: false,
           includeStrength: simpleStrength,
           experience: "beginner",
+          races,
         };
         return { input: built, plan: generatePlan(built), buildError: null };
       }
@@ -196,6 +212,7 @@ export function PlanBuilder({
         includeTuneups,
         allowDoubles,
         includeStrength,
+        races,
       };
       return { input: built, plan: generatePlan(built), buildError: null };
     } catch (e) {
@@ -204,7 +221,7 @@ export function PlanBuilder({
   }, [
     mode, name, raceType, customDist, goalTime, raceDate, fitnessMode, recentRaceType, recentTime,
     easyPace, currentVol, peakVol, daysPerWeek, longRunDow, restDow, includeTuneups, allowDoubles, includeStrength,
-    tier, simpleDays, simpleGoalMode, simpleGoalTime, simpleStrength, unit, todayISO,
+    tier, simpleDays, simpleGoalMode, simpleGoalTime, simpleStrength, unit, todayISO, raceDrafts,
   ]);
 
   async function submit() {
@@ -469,6 +486,22 @@ export function PlanBuilder({
             </Section>
           </>
         )}
+        <Section n={4} title="Other races (optional)">
+          <p className="text-sm -mt-1" style={{ color: "var(--faint)" }}>
+            Racing anything else on the way to {RACE_TYPE_LABEL[raceType].toLowerCase()} day? Add it
+            here and the plan is built around it — a race day in the schedule, with the lead-in and
+            recovery its priority deserves. Your goal race is the A race; these are your B and C
+            races.
+          </p>
+          <RaceListEditor
+            value={raceDrafts}
+            onChange={setRaceDrafts}
+            unit={unit}
+            minDateISO={todayISO}
+            maxDateISO={addDaysISO(raceDate, -MIN_RACE_LEAD_DAYS)}
+            max={MAX_SUPPORTING_RACES}
+          />
+        </Section>
       </div>
 
       {/* ---------------- Live preview ---------------- */}
@@ -515,6 +548,19 @@ export function PlanBuilder({
               </div>
               <span style={{ color: "var(--muted)" }}>{plan.feasibility.message}</span>
             </div>
+
+            {input && (input.races?.length ?? 0) > 0 && (
+              <div className="rounded-lg px-3 py-2.5 text-sm" style={{ background: "var(--surface-2)" }}>
+                <span style={{ color: "var(--muted)" }}>
+                  Built around{" "}
+                  <strong style={{ color: "var(--foreground)" }}>
+                    {input.races!.length} other race{input.races!.length === 1 ? "" : "s"}
+                  </strong>{" "}
+                  — each gets its own race day, plus the easy days either side its priority calls
+                  for.
+                </span>
+              </div>
+            )}
 
             <VolumeChart
               weeks={plan.weeks.map((w) => ({

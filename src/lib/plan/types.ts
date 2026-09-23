@@ -7,6 +7,27 @@ export type CurrentFitness =
   | { mode: "race"; raceType: Exclude<RaceType, "custom">; timeS: number }
   | { mode: "estimate"; weeklyKm: number; easyPaceSecPerKm: number };
 
+/** Priority of a race inside a plan: B = mini-taper for it, C = train through it. */
+export type RacePriority = "b" | "c";
+
+/**
+ * A race in the plan that isn't the goal race. The goal race is the A race;
+ * these are the B and C races the season also contains.
+ */
+export interface SupportingRace {
+  /** Stable id, so rows survive editing and reordering in the UI. */
+  id: string;
+  /** Optional name ("Brighton Half") — falls back to the distance label. */
+  name?: string | null;
+  raceType: RaceType;
+  /** Distance in km when raceType is "custom". */
+  customDistanceKm?: number | null;
+  dateISO: string;
+  priority: RacePriority;
+  /** Target finish time; predicted from projected fitness when omitted. */
+  goalTimeS?: number | null;
+}
+
 export interface GenerateInput {
   name?: string;
   raceType: RaceType;
@@ -23,6 +44,8 @@ export interface GenerateInput {
   longRunDow: number; // 1..7 (ISO)
   restDow?: number | null; // preferred rest day (ISO 1..7); null → auto
   includeTuneups: boolean;
+  /** B/C races to fold into the plan around the goal race. */
+  races?: SupportingRace[];
   /** Split long easy days into AM + short PM recovery runs (high-volume plans). */
   allowDoubles?: boolean;
   /** Add two short bodyweight strength sessions a week on easy days. */

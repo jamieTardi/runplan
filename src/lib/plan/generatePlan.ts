@@ -10,6 +10,7 @@ import {
   goalVdot as computeGoalVdot,
 } from "./goal";
 import { buildBridgeWeekPlans, buildWeekPlans } from "./periodize";
+import { applySupportingRaces, raceWeekIndexes } from "./supportingRaces";
 import type { GeneratedPlan, GenerateInput, PlanWeek } from "./types";
 import { paceZones, raceDistanceM } from "./vdot";
 import { raceLabel } from "@/lib/planMeta";
@@ -47,21 +48,30 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
   const raceDow = isoDayOfWeek(input.raceDateISO);
   let racePrepCount = 0;
 
-  const weeks: PlanWeek[] = weekPlans.map((wp, i) => {
+  // Weeks that already hold one of the runner's own races don't also get an
+  // invented tune-up — the real race is the tune-up.
+  const supportingWeeks = raceWeekIndexes(
+    weekPlans.map((wp) => wp.startDateISO),
+    input.races,
+  );
+  const weekVdots: number[] = [];
+
+  const built: PlanWeek[] = weekPlans.map((wp, i) => {
     const progress = totalWeeks > 1 ? i / (totalWeeks - 1) : 1;
     const eased = progress * progress * (3 - 2 * progress); // smoothstep
     const qualityVdot = currentVdot + (goalVdot - currentVdot) * eased;
     const quality = paceZones(qualityVdot);
+    weekVdots.push(qualityVdot);
 
     const isRaceWeek = i === totalWeeks - 1;
     let isTuneupWeek = false;
     if (wp.phase === "race_prep" && input.includeTuneups) {
       // A tune-up roughly every third race-prep week.
-      isTuneupWeek = racePrepCount % 3 === 1;
+      isTuneupWeek = racePrepCount % 3 === 1 && !supportingWeeks.has(i);
       racePrepCount++;
     }
 
-    const built = buildWeek({
+    const week = buildWeek({
       week: wp,
       totalWeeks,
       raceType: input.raceType,
@@ -79,7 +89,7 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       isRaceWeek,
       isTuneupWeek,
     });
-    const withDoubles = applyDoubles(built, {
+    const withDoubles = applyDoubles(week, {
       enabled: input.allowDoubles ?? false,
       isRaceWeek,
       longRunDow: input.longRunDow,
@@ -91,6 +101,14 @@ export function generatePlan(input: GenerateInput): GeneratedPlan {
       longRunDow: input.longRunDow,
     });
     return applyBeginnerNotes(withStrength, input.experience === "beginner");
+  });
+
+  // Fold in the season's other races (B/C): each one becomes a race day, with
+  // a mini-taper into it and recovery days out of it sized by its priority.
+  const weeks = applySupportingRaces(built, input.races, {
+    easy: easyZones,
+    weekVdots,
+    peakVolumeKm: input.peakVolumeKm,
   });
 
   const totalDistanceKm = weeks.reduce(
